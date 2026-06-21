@@ -31,10 +31,10 @@ class GeocodingClient:
 
         response = self._geocoding_request(params)
         data = self._geoconding_transform(response)
-        coordinates : Coordinates = {
-            "latitude" : data["results"][0]["latitude"],
-            "longitude" : data["results"][0]["longitude"]
-        }
+        coordinates : Coordinates = Coordinates(
+            latitude = data["results"][0]["latitude"],
+            longitude = data["results"][0]["longitude"]
+        )
         return coordinates
 
 
