@@ -1,27 +1,25 @@
-from time import sleep
-
-import typer
-
-
-from rich.console import Console
-from rich.panel import Panel
-from rich.live import Live
-from rich.layout import Layout
 import time
 
+import httpx
+import typer
+from rich.console import Console
+from rich.live import Live
 
 from src.api.geocoding_api import GeocodingClient, Coordinates
-from src.api.weather_api import WeatherClient  
+from src.api.weather_api import WeatherClient
 
 console = Console()
 app = typer.Typer()
 
 @app.command("cur_temp")
 def display_current_temperature(city:str = "Miami"):
-    geocoding_client = GeocodingClient(base_url = "https://geocoding-api.open-meteo.com/v1/search")
+    geocoding_url = httpx.URL("https://geocoding-api.open-meteo.com/v1/search")
+    geocoding_client = GeocodingClient(base_url = geocoding_url)
     coordinates : Coordinates = geocoding_client.get_coordinates(city)
-    weather_client = WeatherClient(base_url = "https://api.open-meteo.com/v1/forecast")
+    weather_url = httpx.URL("https://api.open-meteo.com/v1/forecast")
+    weather_client = WeatherClient(base_url = weather_url)
     weather_client.set_forecast(coordinates)
+    console.print(weather_client.get_weather_forecast())
 
 
 @app.command("brief")

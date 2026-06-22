@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 class GeocodingClient:
 
-    def __init__(self, http_client: httpx.Client | None = None, base_url:str = None, timeout:float = 10.0):
+    def __init__(self, http_client: httpx.Client | None = None, base_url:httpx.URL | None = None, timeout:float = 10.0):
         self.base_url = base_url
         self.timeout = timeout
         if http_client is None:
