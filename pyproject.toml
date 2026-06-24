@@ -8,17 +8,6 @@ authors = [
 ]
 license = { text = "MIT" }
 requires-python = ">=3.14"
-keywords = ["cli", "dashboard", "weather", "typer", "rich", "terminal-ui", "open-meteo"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.14",
-    "Topic :: Utilities",
-    "Topic :: Terminals",
-]
 dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.13.4",
@@ -35,4 +24,3 @@ mydash = "cli.main:app"
 [project.urls]
 Homepage = "https://github.com/Kultrol/mydash"
 Repository = "https://github.com/Kultrol/mydash"
-Issues = "https://github.com/Kultrol/mydash/issues"
