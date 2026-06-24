@@ -30,16 +30,14 @@ uv run python -m cli.main cur_weather "Tokyo"
 
 - [ ] `daily-brief` command — One command to rule them all (weather + news + markets + calendar + AI summary)
 - [ ] 📰 News integration (top headlines, personalized topics)
-- [ ] 📊 Financial markets overview (indices, watchlist, crypto?)
+- [ ] 📊 Financial markets overview (indices, watchlist, crypto)
 - [ ] 📅 Calendar & tasks integration (local iCal, Google Calendar via API, or simple todo)
 - [ ] 🤖 AI Post-processing — Use LLMs (local or API) to generate personalized insights, "what matters today", summaries
-- [ ] 📍 Reverse geocoding + auto location detection (IP-based or GPS via companion app?)
+- [ ] 📍 Reverse geocoding + auto location detection
 - [ ] Configuration system (`.env`, TOML config, API keys management)
 - [ ] Theming / more Rich components (spinners, live updates, ASCII art weather icons?)
 - [ ] Packaging & distribution (`pip install mydash`, Homebrew, etc.)
 - [ ] Tests, CI/CD, docs
-
-See [GitHub Projects](https://github.com/Kultrol/mydash/projects) or open issues for detailed user stories and progress.
 
 ## 🛠 Tech Stack & Design
 
