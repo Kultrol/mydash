@@ -1,0 +1,21 @@
+from typing import Protocol, Any
+from abc import abstractmethod
+from client.geocoding.schemas import Coordinates
+
+class GeocodingClient(Protocol):
+
+    @abstractmethod
+    def _make_request(self, params) -> Any:
+        """
+
+        :param params:
+        :return:
+        """
+
+    @abstractmethod
+    def get_coordinates(self, city: str) -> Coordinates:
+        """
+
+        :param city:
+        :return:
+        """
