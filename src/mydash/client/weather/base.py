@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Protocol, runtime_checkable, Any
 
-from client.weather.schemas import MultiDayForecast
+from src.mydash.client.weather.schemas import MultiDayForecast
 
 
 @runtime_checkable
