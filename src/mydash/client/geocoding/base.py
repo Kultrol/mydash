@@ -1,6 +1,6 @@
 from typing import Protocol, Any
 from abc import abstractmethod
-from client.geocoding.schemas import Coordinates
+from src.mydash.client.geocoding.schemas import Coordinates
 
 class GeocodingClient(Protocol):
 

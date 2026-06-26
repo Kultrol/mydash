@@ -1,8 +1,7 @@
-import httpx
 import typer
 from rich.console import Console
-from client.weather.factory import get_weather_client
-from client.geocoding.factory import get_geocoding_client
+from src.mydash.client.weather.factory import get_weather_client
+from src.mydash.client.geocoding.factory import get_geocoding_client
 
 
 console = Console()
