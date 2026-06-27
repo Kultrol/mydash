@@ -15,5 +15,4 @@ wheels/
 
 #Misc
 .idea
-uv.lock
 .python-version
