@@ -32,7 +32,7 @@ class OpenMeteoClient(WeatherClient):
     def set_coordinates(self, coordinates : Coordinates) -> None:
         self.coordinates : Coordinates = coordinates
 
-    def set_forecast(self, forecast_length: int = 1) -> None:
+    def set_weather_forecast(self, forecast_length: int = 1) -> None:
             params = {
                 "latitude": self.coordinates.latitude,
                 "longitude": self.coordinates.longitude,
