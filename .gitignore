@@ -8,3 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Environment variable file
+.env
+
+
+#Misc
+.idea
+.python-version

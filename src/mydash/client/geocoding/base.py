@@ -13,7 +13,14 @@ class GeocodingClient(Protocol):
         """
 
     @abstractmethod
-    def get_coordinates(self, city: str) -> Coordinates:
+    def set_coordinates(self, city: str) -> None:
+        """
+
+        :param city:
+        :return:
+        """
+
+    def get_coordinates(self, city:str) -> Coordinates:
         """
 
         :param city:
