@@ -17,7 +17,7 @@ class WeatherClient(Protocol):
         ...
 
     @abstractmethod
-    def set_forecast(self, forecast_length: int = 0) -> None:
+    def set_weather_forecast(self, forecast_length: int = 0) -> None:
         """
 
         :param forecast_length:

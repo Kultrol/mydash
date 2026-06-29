@@ -1,7 +1,12 @@
 import typer
 from rich.console import Console
+from rich.pretty import pprint
 from src.mydash.client.weather.factory import get_weather_client
 from src.mydash.client.geocoding.factory import get_geocoding_client
+from rich.traceback import install
+
+#Custom Rich Traceback displays
+install(show_locals=True)
 
 
 console = Console()
@@ -15,7 +20,7 @@ def display_current_weather(city:str = "Miami"):
     weather_client.set_coordinates(geocoding_coordinates)
     weather_client.set_forecast()
     weather_data = weather_client.get_weather_forecast()
-    console.print(weather_data)
+    pprint(weather_data)
 
 
 
