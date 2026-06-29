@@ -19,9 +19,6 @@ dependencies = [
 ]
 
 
-[project.scripts]
-mydash = "cli.main:app"
-
 [project.urls]
 Homepage = "https://github.com/Kultrol/mydash"
 Repository = "https://github.com/Kultrol/mydash"
