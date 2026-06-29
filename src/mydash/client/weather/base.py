@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Protocol, runtime_checkable, Any
 
-from client.weather.schemas import MultiDayForecast
+from src.mydash.client.weather.schemas import MultiDayForecast
 
 
 @runtime_checkable
@@ -17,7 +17,7 @@ class WeatherClient(Protocol):
         ...
 
     @abstractmethod
-    def set_forecast(self, forecast_length: int = 0) -> None:
+    def set_weather_forecast(self, forecast_length: int = 0) -> None:
         """
 
         :param forecast_length:

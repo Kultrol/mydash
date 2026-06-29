@@ -1,7 +1,7 @@
 from typing import Any
 
 from .base import WeatherClient
-from client.geocoding.schemas import Coordinates
+from src.mydash.client.geocoding.schemas import Coordinates
 from .schemas import MultiDayForecast, DayForecast, HourForecast
 from datetime import datetime
 from rich.console import Console
@@ -32,7 +32,7 @@ class OpenMeteoClient(WeatherClient):
     def set_coordinates(self, coordinates : Coordinates) -> None:
         self.coordinates : Coordinates = coordinates
 
-    def set_forecast(self, forecast_length: int = 1) -> None:
+    def set_weather_forecast(self, forecast_length: int = 1) -> None:
             params = {
                 "latitude": self.coordinates.latitude,
                 "longitude": self.coordinates.longitude,
