@@ -8,6 +8,7 @@ from .schemas import Coordinates, GeocodingParams
 
 
 class OpenMeteoClient(GeocodingClient):
+        # TODO: implement set_coordinates to satisfy GeocodingClient protocol
 
         def __init__(self):
             self.client = httpx.Client()
@@ -16,6 +17,7 @@ class OpenMeteoClient(GeocodingClient):
 
         def _make_request(self, params: dict[Any]) -> Any:
 
+            # TODO: replace `is ""` with `== ""` to fix SyntaxWarning
             if params.get("name") is None or params.get("name") is "":
                 Console().print("Parameter key - 'name', has an empty value or None. Please provide a valid value with the key 'name'.")
                 raise ValueError

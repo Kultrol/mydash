@@ -1,4 +1,4 @@
-from src.mydash.client.stocks.base import StockClient
+from mydash.client.stocks.base import StockClient
 from .alpaca import AlpacaClient
 
 

@@ -1,9 +1,10 @@
-from typing import Protocol, Any
 from abc import abstractmethod
-from src.mydash.client.geocoding.schemas import Coordinates
+from typing import Any, Protocol
+
+from mydash.client.geocoding.schemas import Coordinates
+
 
 class GeocodingClient(Protocol):
-
     @abstractmethod
     def _make_request(self, params) -> Any:
         """
@@ -20,9 +21,10 @@ class GeocodingClient(Protocol):
         :return:
         """
 
-    def get_coordinates(self, city:str) -> Coordinates:
+    def get_coordinates(self, city: str) -> Coordinates:
         """
 
         :param city:
         :return:
         """
+        ...

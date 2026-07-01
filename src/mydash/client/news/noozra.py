@@ -1,7 +1,7 @@
 from typing import Any
 
-from src.mydash.client.news.base import NewsClient
-from src.mydash.client.news.schemas import NewsHeadlines, HeadLine
+from mydash.client.news.base import NewsClient
+from mydash.client.news.schemas import NewsHeadlines, HeadLine
 
 from rich.console import Console
 

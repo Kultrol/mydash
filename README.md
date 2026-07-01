@@ -22,8 +22,9 @@ Currently focused on weather with plans to expand into a full daily briefing too
 ### Example
 
 ```bash
-uv run python -m cli.main cur_weather "Miami"
-uv run python -m cli.main cur_weather "Tokyo"
+# Smoke-test command to confirm the CLI launches via uv (prints "Hello World")
+uv run src/mydash/cli/main.py
+uv run python -m mydash.cli.main
 ```
 
 ## 🚀 Roadmap & Planned Features
@@ -36,7 +37,7 @@ uv run python -m cli.main cur_weather "Tokyo"
 - [ ] 📍 Reverse geocoding + auto location detection
 - [ ] Configuration system (`.env`, TOML config, API keys management)
 - [ ] Theming / more Rich components (spinners, live updates, ASCII art weather icons?)
-- [ ] Packaging & distribution (`pip install mydash`, Homebrew, etc.)
+- [x] Packaging & distribution (`pip install -e .` / `uv sync` with hatchling src layout)
 - [ ] Tests, CI/CD, docs
 
 ## 🛠 Tech Stack & Design
@@ -51,7 +52,7 @@ uv run python -m cli.main cur_weather "Tokyo"
 | Packaging     | uv + pyproject.toml         | Fast, modern Python tooling      |
 
 **Architecture highlights**:
-- `client/` package with pluggable data sources (weather, geocoding, future: news, finance)
+- `src/mydash/client/` package with pluggable data sources (weather, geocoding, news, stocks)
 - Each domain has `base.py` (abstract), `factory.py`, concrete impl (e.g. `open_meteo.py`), and `schemas.py`
 - Easy to add new providers (e.g. WeatherAPI, NewsAPI, Alpha Vantage, etc.)
 
@@ -68,7 +69,7 @@ cd mydash
 
 ```bash
 # Install uv if you don't have it: https://docs.astral.sh/uv/getting-started/installation/
-uv sync
+uv sync  # installs dependencies and the mydash package in editable mode
 ```
 
 Or with pip:
@@ -82,11 +83,14 @@ pip install -e .
 ### 3. Run it
 
 ```bash
-# Current weather for a city
-uv run python -m cli.main cur_weather "San Francisco"
+# Smoke-test command (verifies uv run / packaging, not app logic)
+uv run src/mydash/cli/main.py
+
+# Equivalent module invocation
+uv run python -m mydash.cli.main
 
 # Help
-uv run python -m cli.main --help
+uv run src/mydash/cli/main.py --help
 ```
 
 > **Note**: No API keys required for current features (Open-Meteo is free & keyless). Future features will support optional keys via `.env`.
@@ -101,10 +105,10 @@ Contributions, ideas, and feedback are welcome! This is a personal learning/expe
 
 ### Adding a new data source
 
-1. Implement the abstract base in `client/<domain>/base.py`
-2. Create concrete class in e.g. `client/<domain>/my_provider.py`
+1. Implement the abstract base in `src/mydash/client/<domain>/base.py`
+2. Create concrete class in e.g. `src/mydash/client/<domain>/my_provider.py`
 3. Register in `factory.py`
-4. Add Typer command in `cli/main.py`
+4. Add Typer command in `src/mydash/cli/main.py`
 
 ## 📄 License
 

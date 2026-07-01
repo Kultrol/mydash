@@ -7,13 +7,13 @@ from pytest_mock import MockFixture
 
 import httpx
 
-from src.mydash.client.geocoding.factory import get_geocoding_client
-from src.mydash.client.geocoding.schemas import Coordinates
+from mydash.client.geocoding.factory import get_geocoding_client
+from mydash.client.geocoding.schemas import Coordinates
 
 
 
 def test__make_request_invalid_request_return_raised_staus_error(mocker, mock_urls):
-    #TODO mock status error,
+    # TODO: add mock_urls fixture (e.g. in conftest.py) and finish this test
     ...
 
 

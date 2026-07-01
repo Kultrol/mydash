@@ -3,26 +3,28 @@ name = "mydash"
 version = "0.1.0"
 description = "A beautiful command-line daily dashboard for weather, news, markets, calendar & AI briefs."
 readme = "README.md"
-authors = [
-    { name = "Kevin Medina", email = "physicskev@outlook.com" }
-]
+authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
 license = { text = "MIT" }
+
 requires-python = ">=3.14"
 dependencies = [
-    "httpx>=0.28.1",
-    "pydantic>=2.13.4",
-    "pytest>=9.1.1",
-    "pytest-mock>=3.15.1",
-    "python-dotenv>=1.2.2",
-    "rich>=15.0.0",
-    "typer>=0.26.4",
+  "httpx>=0.28.1",
+  "pydantic>=2.13.4",
+  # TODO: move pytest and pytest-mock to a [dependency-groups] dev section
+  "pytest>=9.1.1",
+  "pytest-mock>=3.15.1",
+  "python-dotenv>=1.2.2",
+  "rich>=15.0.0",
+  "typer>=0.26.4",
 ]
-
 
 [project.urls]
 Homepage = "https://github.com/Kultrol/mydash"
 Repository = "https://github.com/Kultrol/mydash"
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-
-
+[tool.pytest.ini_options]
+testpaths = ["test"]

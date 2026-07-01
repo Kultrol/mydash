@@ -1,7 +1,7 @@
 from typing import Any
 
 from .base import WeatherClient
-from src.mydash.client.geocoding.schemas import Coordinates
+from mydash.client.geocoding.schemas import Coordinates
 from .schemas import MultiDayForecast, DayForecast, HourForecast
 from datetime import datetime
 from rich.console import Console

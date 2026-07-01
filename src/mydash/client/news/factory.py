@@ -1,4 +1,4 @@
-from src.mydash.client.news.base import NewsClient
+from mydash.client.news.base import NewsClient
 from .noozra import NoozraClient
 
 

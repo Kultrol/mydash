@@ -1,7 +1,7 @@
 from typing import Any
 
-from src.mydash.client.stocks.base import StockClient
-from src.mydash.client.stocks.schemas import StockQuotes, StockQuote
+from mydash.client.stocks.base import StockClient
+from mydash.client.stocks.schemas import StockQuotes, StockQuote
 
 import httpx
 
