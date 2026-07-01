@@ -9,12 +9,9 @@ from .schemas import StockQuotes
 
 
 class StockClient(Protocol):
-    """Protocol for stock quote providers.
+    """Protocol for stock quote providers."""
 
-    TODO(refinement): add @abstractmethod decorators to all methods for consistent
-        protocol enforcement (weather/geocoding bases already use them).
-    """
-
+    @abstractmethod
     def _make_request(self, params) -> Any:
         """Send an authenticated HTTP request to the provider API.
 
@@ -22,9 +19,11 @@ class StockClient(Protocol):
         :return: Parsed JSON response body.
         """
 
+    @abstractmethod
     def set_current_stock_quotes(self) -> None:
         """Fetch latest quotes from the provider and cache them on the client."""
 
+    @abstractmethod
     def get_current_stock_quotes(self) -> StockQuotes:
         """Return quotes cached by the most recent ``set_current_stock_quotes`` call."""
         ...

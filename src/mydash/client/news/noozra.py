@@ -39,17 +39,16 @@ class NoozraClient(NewsClient):
             response = self.client.get(
                 self.url, params=params.model_dump(), timeout=self.timeout
             )
+            response.raise_for_status()
             return response.json()
         except httpx.HTTPError as err:
             console.print(f"Encountered an HTTPError at {err.request.url}: {err}\n")
             console.print_exception(show_locals=True)
-            # TODO(refinement): call response.raise_for_status() and re-raise instead of
-            #   returning None, which causes TypeError in set_news_headlines.
+            raise
 
-    def set_news_headlines(self) -> None:
+    def set_news_headlines(self, category: str = "politics") -> None:
         try:
-            # TODO(refinement): category is hardcoded; accept as parameter or CLI option
-            params = NoozraParams(category="politics")
+            params = NoozraParams(category=category)
             raw_news_headlines = self._make_request(params=params)
             # Map each API article dict to a validated HeadLine model.
             for article in raw_news_headlines["articles"]:

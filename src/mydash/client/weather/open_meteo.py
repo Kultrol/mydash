@@ -23,8 +23,8 @@ class OpenMeteoClient(WeatherClient):
         self.url = "https://api.open-meteo.com/v1/forecast"
         self.timeout = 10
 
-        self.coordinates: Coordinates = None
-        self.weather_forecast: MultiDayForecast = None
+        self.coordinates: Coordinates | None = None
+        self.weather_forecast: MultiDayForecast | None = None
 
     def _make_request(self, params) -> Any:
         try:
@@ -34,15 +34,16 @@ class OpenMeteoClient(WeatherClient):
 
         except httpx.HTTPError as err:
             Console().log(f"HTTP Exception for {err.request.url} - {err}")
-            # TODO(refinement): re-raise or return a typed error instead of silently returning None,
-            #   which causes AttributeError downstream in set_weather_forecast.
+            raise
 
     def set_coordinates(self, coordinates: Coordinates) -> None:
         """Store coordinates for subsequent forecast requests."""
-        self.coordinates: Coordinates = coordinates
+        self.coordinates = coordinates
 
     def set_weather_forecast(self, forecast_length: int = 1) -> None:
-        # TODO(refinement): guard against self.coordinates being None before accessing .latitude/.longitude
+        if self.coordinates is None:
+            raise ValueError("Coordinates must be set before fetching a weather forecast.")
+
         params = {
             "latitude": self.coordinates.latitude,
             "longitude": self.coordinates.longitude,
@@ -80,9 +81,8 @@ class OpenMeteoClient(WeatherClient):
 
                 current_day = DayForecast(month=time.month, day=time.day, hours=[])
 
-            # TODO(refinement): hour is passed as str(time.hour) but HourForecast.hour expects int
             current_day.hours.append(HourForecast(
-                hour=str(time.hour),
+                hour=time.hour,
                 temperature=temperature,
                 feels_like_temperature=feels_like_temperature,
                 cloud_cover=cloud_cover,
@@ -93,7 +93,7 @@ class OpenMeteoClient(WeatherClient):
                 uv_index=uv_index
             ))
 
-        # TODO(refinement): the final day in the loop is never appended to weather_forecast.days
+        weather_forecast.days.append(current_day)
         self.weather_forecast = weather_forecast
         return None
 

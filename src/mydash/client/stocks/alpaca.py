@@ -25,6 +25,10 @@ class AlpacaParams(BaseModel):
 
     symbols: list[str]
 
+    def to_query_params(self) -> dict[str, str]:
+        """Serialize symbols as a comma-separated string for the Alpaca API."""
+        return {"symbols": ",".join(self.symbols)}
+
 
 class AlpacaHeaders(BaseModel):
     """Authentication headers for Alpaca API requests."""
@@ -39,14 +43,11 @@ class AlpacaClient(StockClient):
 
     def __init__(self):
         self.client = httpx.Client()
-        # TODO(refinement): URL hardcodes ?symbols=SPY; symbols should come from params only
-        self.url = "https://data.alpaca.markets/v2/stocks/bars/latest?symbols=SPY"
+        self.url = "https://data.alpaca.markets/v2/stocks/bars/latest"
         if os.getenv("STOCK_ALPACA_API_KEY_ID") is not None or os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None:
-            # TODO(refinement): env var typo — uses STOCK_APCA_API_KEY_ID here but checks
-            #   STOCK_ALPACA_API_KEY_ID above, so credentials may silently be None.
             self.headers = AlpacaHeaders(
-                api_key=os.getenv("STOCK_APCA_API_KEY_ID"),
-                api_secret=os.getenv("STOCK_APCA_API_SECRET_KEY"),
+                api_key=os.getenv("STOCK_ALPACA_API_KEY_ID"),
+                api_secret=os.getenv("STOCK_ALPACA_API_SECRET_KEY"),
                 accept="application/json"
             )
         else:
@@ -62,7 +63,8 @@ class AlpacaClient(StockClient):
                     "APCA-API-SECRET-KEY": self.headers.api_secret,
                     "accept": self.headers.accept
                 }
-                response = self.client.get(self.url, params=params.model_dump(), headers=headers)
+                response = self.client.get(self.url, params=params.to_query_params(), headers=headers)
+                response.raise_for_status()
                 return response.json()
             else:
                 console.print(
@@ -73,19 +75,18 @@ class AlpacaClient(StockClient):
         except httpx.HTTPError as err:
             console.log(f"Encountered an HTTPError at {err.request.url}: {err}\n")
             console.print_exception(show_locals=True)
+            raise
 
     def set_current_stock_quotes(self) -> None:
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
         response = self._make_request(params=params)
-        # TODO(refinement): iterates AlpacaParams.symbols (undefined class attr) instead of
-        #   params.symbols — will raise AttributeError at runtime.
-        for ticker in AlpacaParams.symbols:
-            # TODO(testing): response key shape (ticker → ap/bp/t) is assumed but untested
+        bars = response.get("bars", response)
+        for ticker in params.symbols:
             self.stock_quotes.quotes.append(StockQuote(
                 ticker_name=ticker,
-                ask_price=response[ticker]["ap"],
-                bid_price=response[ticker]["bp"],
-                time=response[ticker]["t"]
+                ask_price=bars[ticker]["ap"],
+                bid_price=bars[ticker]["bp"],
+                time=bars[ticker]["t"]
             ))
         return None
 
