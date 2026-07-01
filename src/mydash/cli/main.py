@@ -11,7 +11,10 @@ Intended command flow (not yet implemented):
     daily-brief  orchestrate all domains into a single briefing
 """
 
+import os
+
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.pretty import pprint
 from rich.traceback import install
@@ -33,12 +36,14 @@ install(show_locals=True)
 console = Console()
 app = typer.Typer()
 
+load_dotenv()
+
 
 @app.command("greeting")
 def hello_world():
     """Smoke-test command to verify ``uv run`` works; not part of the app surface."""
 
-    console.print("Hello World")
+    console.print(os.getenv("MOCK_API_KEY"))
 
 
 if __name__ == "__main__":
