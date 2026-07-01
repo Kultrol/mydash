@@ -1,15 +1,8 @@
 """Tests for the Open-Meteo geocoding client.
 
 Covers coordinate resolution for valid cities (mocked API responses) and error
-handling for invalid input. HTTP-layer error tests are stubbed pending fixtures.
-
-TODO(testing): add test suites for weather, news, stocks, and CLI modules.
-TODO(testing): create test/conftest.py with shared fixtures (mock_urls, httpx mocks).
-TODO(config): move pytest and pytest-mock from runtime deps to a dev group in pyproject.toml.
+handling for invalid input and HTTP failures.
 """
-
-from typing import Any
-from urllib.error import HTTPError
 
 import pytest
 from pydantic import ValidationError
@@ -22,8 +15,15 @@ from mydash.client.geocoding.schemas import Coordinates
 
 
 def test__make_request_invalid_request_return_raised_staus_error(mocker, mock_urls):
-    # TODO(testing): add mock_urls fixture (e.g. in conftest.py) and finish this test
-    ...
+    client = get_geocoding_client("open-meteo")
+    request = httpx.Request("GET", mock_urls["geocoding"])
+    http_error = httpx.HTTPStatusError(
+        "Server error", request=request, response=httpx.Response(500, request=request)
+    )
+    mocker.patch.object(client.client, "get", side_effect=http_error)
+
+    with pytest.raises(httpx.HTTPError):
+        client._make_request(params={"name": "Miami"})
 
 
 @pytest.mark.parametrize(

@@ -6,10 +6,8 @@ known providers and raises ``ValueError`` for unknown ones.
 
 import pytest
 
-# TODO(testing): standardize imports — this file uses ``src.mydash`` while
-#   test_open_meteo.py uses ``mydash``; pick one style project-wide.
-from src.mydash.client.geocoding.factory import get_geocoding_client
-from src.mydash.client.geocoding.open_meteo import OpenMeteoClient
+from mydash.client.geocoding.factory import get_geocoding_client
+from mydash.client.geocoding.open_meteo import OpenMeteoClient
 
 
 def test_get_geocoding_client_provider_empty_return_open_meteo_client():
