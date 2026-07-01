@@ -10,12 +10,15 @@ requires-python = ">=3.14"
 dependencies = [
   "httpx>=0.28.1",
   "pydantic>=2.13.4",
-  # TODO: move pytest and pytest-mock to a [dependency-groups] dev section
-  "pytest>=9.1.1",
-  "pytest-mock>=3.15.1",
   "python-dotenv>=1.2.2",
   "rich>=15.0.0",
   "typer>=0.26.4",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.1.1",
+  "pytest-mock>=3.15.1",
 ]
 
 [project.urls]
