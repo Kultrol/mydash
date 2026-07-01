@@ -105,6 +105,7 @@ uv run src/mydash/cli/main.py --help
 ## 🧪 Development
 
 ```bash
+uv sync --group dev
 uv run pytest
 ```
 
@@ -116,6 +117,10 @@ Contributions, ideas, and feedback are welcome! This is a personal learning/expe
 2. Create concrete class in e.g. `src/mydash/client/<domain>/my_provider.py`
 3. Register in `factory.py`
 4. Add Typer command in `src/mydash/cli/main.py`
+
+## 🤖 AI-assisted development (Grok Build)
+
+Parts of this codebase were planned and implemented with [Grok](https://x.ai/) in Cursor (Grok Build), including client refinements, test coverage, and documentation updates on the `grok/todos-and-comments` branch. Human review and `pytest` validation apply to all merged changes.
 
 ## 📄 License
 
