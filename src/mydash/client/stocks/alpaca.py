@@ -5,7 +5,7 @@ Requires API credentials set in environment variables (see stocks/factory.py).
 """
 
 import os
-from typing import Any
+from typing import Any, Dict
 
 import httpx
 from dotenv import load_dotenv
@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from rich.console import Console
 
 from mydash.client.stocks.base import StockClient
-from mydash.client.stocks.schemas import StockQuote, StockQuotes
+from mydash.client.stocks.schemas import StockBar, StockBars, StockQuote, StockQuotes
 
 console = Console()
 
@@ -41,7 +41,10 @@ class AlpacaClient(StockClient):
 
     def __init__(self):
         self.client = httpx.Client()
-        self.url = "https://data.alpaca.markets/v2/stocks/bars/latest"
+        self.quotes_url = httpx.URL(
+            "https://data.alpaca.markets/v2/stocks/quotes/latest"
+        )
+        self.bars_url = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
         load_dotenv()
         if (
             os.getenv("STOCK_ALPACA_API_KEY_ID") is not None
@@ -53,11 +56,15 @@ class AlpacaClient(StockClient):
                 accept="application/json",
             )
         else:
+            console.print(
+                "Alpaca API key or secret not found. Please proivde a API key and secret to the environment variables."
+            )
             raise ValueError
 
         self.stock_quotes = StockQuotes(quotes=[])
+        self.stock_bars = StockBars(bars=[])
 
-    def _make_request(self, params: AlpacaParams) -> Any:
+    def _make_request(self, url: httpx.URL, params: AlpacaParams) -> Any:
         try:
             headers = {
                 "APCA-API-KEY-ID": self.headers.api_key,
@@ -65,7 +72,7 @@ class AlpacaClient(StockClient):
                 "content-type": self.headers.accept,
             }
             response = self.client.get(
-                self.url, params=params.to_query_params(), headers=headers
+                url, params=params.to_query_params(), headers=headers
             )
             response.raise_for_status()
             return response.json()
@@ -76,18 +83,36 @@ class AlpacaClient(StockClient):
 
     def set_current_stock_quotes(self) -> None:
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
-        response = self._make_request(params=params)
-        bars = response.get("bars", response)
+        response = self._make_request(url=self.quotes_url, params=params)
+        quotes: Dict[Any, Any] = response.get("quotes", response)
         for ticker in params.symbols:
             self.stock_quotes.quotes.append(
                 StockQuote(
                     ticker_name=ticker,
-                    ask_price=bars[ticker]["ap"],
-                    bid_price=bars[ticker]["bp"],
-                    time=bars[ticker]["t"],
+                    ask_price=quotes[ticker]["ap"],
+                    bid_price=quotes[ticker]["bp"],
+                    time=quotes[ticker]["t"],
                 )
             )
         return None
 
     def get_current_stock_quotes(self) -> StockQuotes:
         return self.stock_quotes
+
+    def set_current_stock_bars(self) -> None:
+        params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
+        response = self._make_request(url=self.bars_url, params=params)
+        bars: Dict[Any, Any] = response.get("bars", response)
+        for ticker in params.symbols:
+            self.stock_bars.bars.append(
+                StockBar(
+                    ticker_name=ticker,
+                    open=bars[ticker]["o"],
+                    close=bars[ticker]["c"],
+                    time=bars[ticker]["t"],
+                )
+            )
+        return None
+
+    def get_current_stock_bars(self):
+        return self.stock_bars

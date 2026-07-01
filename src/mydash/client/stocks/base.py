@@ -3,16 +3,19 @@
 Follows the same two-phase pattern as weather and news clients.
 """
 
-from typing import Protocol, Any
 from abc import abstractmethod
-from .schemas import StockQuotes
+from typing import Any, Protocol
+
+import httpx
+
+from .schemas import StockBars, StockQuotes
 
 
 class StockClient(Protocol):
     """Protocol for stock quote providers."""
 
     @abstractmethod
-    def _make_request(self, params) -> Any:
+    def _make_request(self, url: httpx.URL, params) -> Any:
         """Send an authenticated HTTP request to the provider API.
 
         :param params: Query parameters (e.g. symbol list).
@@ -27,3 +30,9 @@ class StockClient(Protocol):
     def get_current_stock_quotes(self) -> StockQuotes:
         """Return quotes cached by the most recent ``set_current_stock_quotes`` call."""
         ...
+
+    @abstractmethod
+    def set_current_stock_bars(self) -> None: ...
+
+    @abstractmethod
+    def get_current_stock_bars(self) -> StockBars: ...

@@ -1,10 +1,12 @@
-"""Pydantic models for stock quote data.
+"""Pydantic models for stock quote and stock bar data.
 
-Field names map to Alpaca latest-bars response keys:
+Field names map to Alpaca latest-quotes response keys:
     ask_price ← ap, bid_price ← bp, time ← t
+    open <- o, close <- c, time <- t
 """
 
 import datetime
+
 from pydantic import BaseModel
 
 
@@ -21,3 +23,16 @@ class StockQuotes(BaseModel):
     """Collection of quotes returned by ``get_current_stock_quotes``."""
 
     quotes: list[StockQuote]
+
+
+class StockBar(BaseModel):
+    ticker_name: str
+    open: float
+    close: float
+    time: datetime.datetime
+
+
+class StockBars(BaseModel):
+    """Collection of Bars returned by ``get_current_stock_bars``."""
+
+    bars: list[StockBar]
