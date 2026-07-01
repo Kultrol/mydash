@@ -11,13 +11,9 @@ Intended command flow (not yet implemented):
     daily-brief  orchestrate all domains into a single briefing
 """
 
-import os
-from operator import ge
-
 import typer
-from dotenv import load_dotenv
 from rich.console import Console
-from rich.pretty import pprint
+from rich.panel import Panel
 from rich.traceback import install
 
 from mydash.client.geocoding.factory import get_geocoding_client
@@ -37,11 +33,9 @@ install(show_locals=True)
 console = Console()
 app = typer.Typer()
 
-load_dotenv()
 
-
-@app.command("greeting")
-def hello_world():
+@app.command("weather")
+def weather_watch():
     """Smoke-test command to verify ``uv run`` works; not part of the app surface."""
     geocoding_client = get_geocoding_client()
     geocoding_client.set_coordinates("Miami")
@@ -51,6 +45,25 @@ def hello_world():
     weather_client.set_coordinates(coordinates)
     weather_client.set_weather_forecast()
     console.print(weather_client.get_weather_forecast())
+
+
+@app.command("stocks")
+def stock_watch():
+    stock_client = get_stock_client()
+    stock_client.set_current_stock_quotes()
+    stock_quotes = stock_client.get_current_stock_quotes()
+    stock_client.set_current_stock_bars()
+    stock_bars = stock_client.get_current_stock_bars()
+    console.print(stock_quotes)
+    console.print(stock_bars)
+
+
+@app.command("news")
+def news_watch():
+    news_client = get_news_client()
+    news_client.set_news_headlines()
+    news_headlines = news_client.get_news_headlines()
+    console.print(news_headlines)
 
 
 if __name__ == "__main__":
