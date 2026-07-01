@@ -35,7 +35,7 @@ uv run python -m mydash.cli.main
 - [ ] 📅 Calendar & tasks integration (local iCal, Google Calendar via API, or simple todo)
 - [ ] 🤖 AI Post-processing — Use LLMs (local or API) to generate personalized insights, "what matters today", summaries
 - [ ] 📍 Reverse geocoding + auto location detection
-- [ ] Configuration system (`.env`, TOML config, API keys management)
+- [ ] Configuration system (`.env.example`, TOML config, API keys management)
 - [ ] Theming / more Rich components (spinners, live updates, ASCII art weather icons?)
 - [x] Packaging & distribution (`pip install -e .` / `uv sync` with hatchling src layout)
 - [ ] Tests, CI/CD, docs
@@ -65,7 +65,14 @@ git clone https://github.com/Kultrol/mydash.git
 cd mydash
 ```
 
-### 2. Install dependencies (recommended: uv)
+### 2. Configure environment variables (optional)
+
+```bash
+cp .env.example .env
+# Edit .env with your API keys (only needed for stocks/Alpaca features)
+```
+
+### 3. Install dependencies (recommended: uv)
 
 ```bash
 # Install uv if you don't have it: https://docs.astral.sh/uv/getting-started/installation/
@@ -80,7 +87,7 @@ source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 pip install -e .
 ```
 
-### 3. Run it
+### 4. Run it
 
 ```bash
 # Smoke-test command (verifies uv run / packaging, not app logic)
@@ -93,7 +100,7 @@ uv run python -m mydash.cli.main
 uv run src/mydash/cli/main.py --help
 ```
 
-> **Note**: No API keys required for current features (Open-Meteo is free & keyless). Future features will support optional keys via `.env`.
+> **Note**: No API keys required for current features (Open-Meteo is free & keyless). Future features will support optional keys via `.env.example` (copy to `.env` locally).
 
 ## 🧪 Development
 

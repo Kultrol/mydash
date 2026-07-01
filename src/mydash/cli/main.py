@@ -7,7 +7,7 @@ packaging smoke-test.
 Intended command flow (not yet implemented):
     weather      geocoding client → weather client → Rich display
     news         news client → Rich display
-    stocks       stock client → Rich display (requires Alpaca API keys in .env)
+    stocks       stock client → Rich display (requires Alpaca API keys via .env.example)
     daily-brief  orchestrate all domains into a single briefing
 """
 
@@ -26,7 +26,7 @@ from mydash.client.stocks.factory import get_stock_client
 # TODO(connection): wire up CLI commands that use these factories:
 #   - ``weather`` — resolve city via get_geocoding_client, pass Coordinates to get_weather_client
 #   - ``news`` — fetch headlines via get_news_client
-#   - ``stocks`` — fetch quotes via get_stock_client (STOCK_ALPACA_API_KEY_ID / SECRET in .env)
+#   - ``stocks`` — fetch quotes via get_stock_client (STOCK_ALPACA_API_KEY_ID / SECRET via .env.example)
 #   - ``daily-brief`` — aggregate all domains above into one Rich layout
 from mydash.client.weather.factory import get_weather_client
 
