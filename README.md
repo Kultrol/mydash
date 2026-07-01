@@ -120,7 +120,13 @@ Contributions, ideas, and feedback are welcome! This is a personal learning/expe
 
 ## 🤖 AI-assisted development (Grok Build)
 
-Parts of this codebase were planned and implemented with [Grok](https://x.ai/) in Cursor (Grok Build), including client refinements, test coverage, and documentation updates on the `grok/todos-and-comments` branch. Human review and `pytest` validation apply to all merged changes.
+Parts of this project were built with [Grok Build](https://x.ai/) in Cursor. I use it primarily to:
+
+- Resolve small technical issues (e.g. fixing `.env` git tracking, import path errors)
+- Add clear module comments and `TODO` markers so gaps are easy to find
+- Implement straightforward fixes — typos, env var name corrections, missing protocol methods (such as `set_coordinates` on the geocoding client)
+
+Larger design and CLI features are written and reviewed by me. AI-assisted changes are developed on `grok/*` branches and merged after manual review and `pytest`.
 
 ## 📄 License
 

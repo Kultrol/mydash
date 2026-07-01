@@ -3,6 +3,8 @@
 The Alpaca provider requires API credentials via environment variables:
     STOCK_ALPACA_API_KEY_ID
     STOCK_ALPACA_API_SECRET_KEY
+
+TODO(docs): document required .env.example variables and Alpaca setup in README.md
 """
 
 from mydash.client.stocks.base import StockClient
