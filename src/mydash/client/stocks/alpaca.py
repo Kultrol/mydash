@@ -4,18 +4,16 @@ Fetches latest bar/quote data from https://data.alpaca.markets.
 Requires API credentials set in environment variables (see stocks/factory.py).
 """
 
+import os
 from typing import Any
 
-from mydash.client.stocks.base import StockClient
-from mydash.client.stocks.schemas import StockQuotes, StockQuote
-
 import httpx
-
+from dotenv import load_dotenv
 from pydantic import BaseModel
 from rich.console import Console
 
-import os
-
+from mydash.client.stocks.base import StockClient
+from mydash.client.stocks.schemas import StockQuote, StockQuotes
 
 console = Console()
 
@@ -44,11 +42,15 @@ class AlpacaClient(StockClient):
     def __init__(self):
         self.client = httpx.Client()
         self.url = "https://data.alpaca.markets/v2/stocks/bars/latest"
-        if os.getenv("STOCK_ALPACA_API_KEY_ID") is not None or os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None:
+        load_dotenv()
+        if (
+            os.getenv("STOCK_ALPACA_API_KEY_ID") is not None
+            or os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None
+        ):
             self.headers = AlpacaHeaders(
                 api_key=os.getenv("STOCK_ALPACA_API_KEY_ID"),
                 api_secret=os.getenv("STOCK_ALPACA_API_SECRET_KEY"),
-                accept="application/json"
+                accept="application/json",
             )
         else:
             raise ValueError
@@ -57,21 +59,16 @@ class AlpacaClient(StockClient):
 
     def _make_request(self, params: AlpacaParams) -> Any:
         try:
-            if os.getenv("STOCK_ALPACA_API_KEY_ID") is not None or os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None:
-                headers = {
-                    "APCA-API-KEY-ID": self.headers.api_key,
-                    "APCA-API-SECRET-KEY": self.headers.api_secret,
-                    "accept": self.headers.accept
-                }
-                response = self.client.get(self.url, params=params.to_query_params(), headers=headers)
-                response.raise_for_status()
-                return response.json()
-            else:
-                console.print(
-                    f"Api key is of type: {type(os.getenv('STOCK_ALPACA_API_KEY_ID'))} | "
-                    f"Api secret is of type: {type(os.getenv('STOCK_ALPACA_API_SECRET_KEY'))}"
-                )
-                raise ValueError
+            headers = {
+                "APCA-API-KEY-ID": self.headers.api_key,
+                "APCA-API-SECRET-KEY": self.headers.api_secret,
+                "content-type": self.headers.accept,
+            }
+            response = self.client.get(
+                self.url, params=params.to_query_params(), headers=headers
+            )
+            response.raise_for_status()
+            return response.json()
         except httpx.HTTPError as err:
             console.log(f"Encountered an HTTPError at {err.request.url}: {err}\n")
             console.print_exception(show_locals=True)
@@ -82,12 +79,14 @@ class AlpacaClient(StockClient):
         response = self._make_request(params=params)
         bars = response.get("bars", response)
         for ticker in params.symbols:
-            self.stock_quotes.quotes.append(StockQuote(
-                ticker_name=ticker,
-                ask_price=bars[ticker]["ap"],
-                bid_price=bars[ticker]["bp"],
-                time=bars[ticker]["t"]
-            ))
+            self.stock_quotes.quotes.append(
+                StockQuote(
+                    ticker_name=ticker,
+                    ask_price=bars[ticker]["ap"],
+                    bid_price=bars[ticker]["bp"],
+                    time=bars[ticker]["t"],
+                )
+            )
         return None
 
     def get_current_stock_quotes(self) -> StockQuotes:

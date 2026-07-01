@@ -12,11 +12,3 @@ class Coordinates(BaseModel):
 
     latitude: float
     longitude: float
-
-
-# Open-Meteo's Geocoding API is mature, so its query parameters are modeled here
-# and expected to remain stable across API versions.
-class GeocodingParams(BaseModel):
-    """Validated query parameters for the Open-Meteo Geocoding search endpoint."""
-
-    name: str = ""

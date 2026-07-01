@@ -4,15 +4,16 @@ Free, keyless hourly weather via https://api.open-meteo.com/v1/forecast.
 Requires coordinates to be set before fetching (typically from the geocoding client).
 """
 
+from datetime import datetime
 from typing import Any
 
-from .base import WeatherClient
-from mydash.client.geocoding.schemas import Coordinates
-from .schemas import MultiDayForecast, DayForecast, HourForecast
-from datetime import datetime
+import httpx
 from rich.console import Console
 
-import httpx
+from mydash.client.geocoding.schemas import Coordinates
+
+from .base import WeatherClient
+from .schemas import DayForecast, HourForecast, MultiDayForecast
 
 
 class OpenMeteoClient(WeatherClient):
@@ -22,9 +23,8 @@ class OpenMeteoClient(WeatherClient):
         self.client = httpx.Client()
         self.url = "https://api.open-meteo.com/v1/forecast"
         self.timeout = 10
-
         self.coordinates: Coordinates | None = None
-        self.weather_forecast: MultiDayForecast | None = None
+        self.weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
     def _make_request(self, params) -> Any:
         try:
@@ -42,15 +42,23 @@ class OpenMeteoClient(WeatherClient):
 
     def set_weather_forecast(self, forecast_length: int = 1) -> None:
         if self.coordinates is None:
-            raise ValueError("Coordinates must be set before fetching a weather forecast.")
+            raise ValueError(
+                "Coordinates must be set before fetching a weather forecast."
+            )
 
         params = {
             "latitude": self.coordinates.latitude,
             "longitude": self.coordinates.longitude,
             # Hourly variables map 1:1 to HourForecast schema fields (see schemas.py).
             "hourly": [
-                "temperature_2m", "apparent_temperature", "precipitation_probability",
-                "precipitation", "weather_code", "cloud_cover", "wind_speed_10m", "uv_index"
+                "temperature_2m",
+                "apparent_temperature",
+                "precipitation_probability",
+                "precipitation",
+                "weather_code",
+                "cloud_cover",
+                "wind_speed_10m",
+                "uv_index",
             ],
             "past_days": 1,
             "forecast_days": forecast_length,
@@ -62,9 +70,10 @@ class OpenMeteoClient(WeatherClient):
         weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
         for index in range(0, len(weather_data["hourly"]["time"])):
-
             hourly_data = weather_data["hourly"]
-            time: datetime = datetime.strptime(hourly_data["time"][index], "%Y-%m-%dT%H:%M")
+            time: datetime = datetime.strptime(
+                hourly_data["time"][index], "%Y-%m-%dT%H:%M"
+            )
             temperature = hourly_data["temperature_2m"][index]
             feels_like_temperature: float = hourly_data["apparent_temperature"][index]
             cloud_cover: int = hourly_data["cloud_cover"][index]
@@ -78,24 +87,29 @@ class OpenMeteoClient(WeatherClient):
             if current_day.day != time.day:
                 if index != 0:
                     weather_forecast.days.append(current_day)
-
                 current_day = DayForecast(month=time.month, day=time.day, hours=[])
 
-            current_day.hours.append(HourForecast(
-                hour=time.hour,
-                temperature=temperature,
-                feels_like_temperature=feels_like_temperature,
-                cloud_cover=cloud_cover,
-                wind_speed=wind_speed,
-                chance_of_rain=chance_of_rain,
-                amount_of_rain=amount_of_rain,
-                weather_code=weather_code,
-                uv_index=uv_index
-            ))
+            current_day.hours.append(
+                HourForecast(
+                    hour=time.hour,
+                    temperature=temperature,
+                    feels_like_temperature=feels_like_temperature,
+                    cloud_cover=cloud_cover,
+                    wind_speed=wind_speed,
+                    chance_of_rain=chance_of_rain,
+                    amount_of_rain=amount_of_rain,
+                    weather_code=weather_code,
+                    uv_index=uv_index,
+                )
+            )
 
         weather_forecast.days.append(current_day)
         self.weather_forecast = weather_forecast
         return None
 
     def get_weather_forecast(self) -> MultiDayForecast:
+        if self.coordinates is None:
+            raise ValueError(
+                "Coordinates must be set before fetching a weather forecast."
+            )
         return self.weather_forecast

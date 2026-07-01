@@ -1,53 +1,32 @@
-"""Tests for the Alpaca stock quote client."""
+"""Tests for mydash.client.stocks.alpaca.
 
-import os
+Target: AlpacaClient, AlpacaParams
+Usage pattern: set_current_stock_quotes() then get_current_stock_quotes()
+Strategy: monkeypatch env vars; patch _make_request with bars JSON
+Depends on: conftest.alpaca_env, conftest.sample_alpaca_bars
+"""
 
-import pytest
+# --- __init__ / credentials ---
+#
+# TODO(testing): missing env vars raises ValueError on AlpacaClient()
+#
+# TODO(testing): reads STOCK_ALPACA_API_KEY_ID and STOCK_ALPACA_API_SECRET_KEY
+#   (not STOCK_APCA_*) — assert client.headers.api_key and api_secret
+#
+# TODO(testing): URL is base path without hardcoded ?symbols=SPY query string
 
-from mydash.client.stocks.alpaca import AlpacaClient, AlpacaParams
-from mydash.client.stocks.schemas import StockQuote
+# --- AlpacaParams ---
+#
+# TODO(testing): to_query_params() serializes symbols as comma-separated string —
+#   AlpacaParams(symbols=["SPY","AAPL","MSFT"]) → {"symbols": "SPY,AAPL,MSFT"}
 
+# --- set_current_stock_quotes ---
+#
+# TODO(testing): parses bars response with ap, bp, t per ticker —
+#   patch _make_request; assert StockQuote ask_price, bid_price, time, ticker_name
+#
+# TODO(testing): handles response wrapped in {"bars": {...}} via response.get("bars", response)
 
-@pytest.fixture
-def alpaca_env(monkeypatch):
-    monkeypatch.setenv("STOCK_ALPACA_API_KEY_ID", "test-key-id")
-    monkeypatch.setenv("STOCK_ALPACA_API_SECRET_KEY", "test-secret-key")
-
-
-def test_alpaca_client_uses_stock_alpaca_env_vars(alpaca_env):
-    client = AlpacaClient()
-
-    assert client.headers.api_key == "test-key-id"
-    assert client.headers.api_secret == "test-secret-key"
-    assert client.url == "https://data.alpaca.markets/v2/stocks/bars/latest"
-    assert "symbols=SPY" not in client.url
-
-
-def test_alpaca_params_serializes_symbols_as_comma_separated_string():
-    params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
-
-    assert params.to_query_params() == {"symbols": "SPY,AAPL,MSFT"}
-
-
-def test_set_current_stock_quotes_parses_ap_bp_t_from_bars(alpaca_env, mocker):
-    client = AlpacaClient()
-    mock_response = {
-        "bars": {
-            "SPY": {"ap": 500.1, "bp": 500.0, "t": "2026-07-01T15:00:00Z"},
-            "AAPL": {"ap": 210.5, "bp": 210.4, "t": "2026-07-01T15:00:00Z"},
-            "MSFT": {"ap": 420.2, "bp": 420.1, "t": "2026-07-01T15:00:00Z"},
-        }
-    }
-    mocker.patch.object(client, "_make_request", return_value=mock_response)
-
-    client.set_current_stock_quotes()
-    quotes = client.get_current_stock_quotes()
-
-    assert len(quotes.quotes) == 3
-    for quote in quotes.quotes:
-        assert isinstance(quote, StockQuote)
-        assert quote.ask_price > quote.bid_price
-
-    spy = next(q for q in quotes.quotes if q.ticker_name == "SPY")
-    assert spy.ask_price == 500.1
-    assert spy.bid_price == 500.0
+# --- _make_request / HTTP errors ---
+#
+# TODO(testing): HTTP error propagates httpx.HTTPError — mock client.client.get failure

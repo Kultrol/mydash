@@ -12,6 +12,7 @@ Intended command flow (not yet implemented):
 """
 
 import os
+from operator import ge
 
 import typer
 from dotenv import load_dotenv
@@ -42,8 +43,14 @@ load_dotenv()
 @app.command("greeting")
 def hello_world():
     """Smoke-test command to verify ``uv run`` works; not part of the app surface."""
+    geocoding_client = get_geocoding_client()
+    geocoding_client.set_coordinates("Miami")
+    coordinates = geocoding_client.get_coordinates()
 
-    console.print(os.getenv("MOCK_API_KEY"))
+    weather_client = get_weather_client()
+    weather_client.set_coordinates(coordinates)
+    weather_client.set_weather_forecast()
+    console.print(weather_client.get_weather_forecast())
 
 
 if __name__ == "__main__":

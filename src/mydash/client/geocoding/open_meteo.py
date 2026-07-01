@@ -4,11 +4,22 @@ Free, keyless geocoding via https://geocoding-api.open-meteo.com/v1/search.
 Results are ranked by relevance; this client takes the first (closest) match.
 """
 
-import httpx
 from typing import Any
+
+import httpx
+from pydantic import BaseModel
 from rich.console import Console
+
 from .base import GeocodingClient
-from .schemas import Coordinates, GeocodingParams
+from .schemas import Coordinates
+
+
+# Open-Meteo's Geocoding API is mature, so its query parameters are modeled here
+# and expected to remain stable across API versions.
+class OpenMeteoParams(BaseModel):
+    """Validated query parameters for the Open-Meteo Geocoding search endpoint."""
+
+    name: str = ""
 
 
 class OpenMeteoClient(GeocodingClient):
@@ -16,9 +27,9 @@ class OpenMeteoClient(GeocodingClient):
 
     def __init__(self):
         self.client = httpx.Client()
-        self.url = "https://geocoding-api.open-meteo.com/v1/search"
+        self.url = httpx.URL("https://geocoding-api.open-meteo.com/v1/search")
         self.timeout = 10
-        self.coordinates: Coordinates | None = None
+        self.coordinates: Coordinates = Coordinates(latitude=0, longitude=0)
 
     def _make_request(self, params: dict[Any, Any]) -> Any:
         if params.get("name") is None or params.get("name") == "":
@@ -38,15 +49,10 @@ class OpenMeteoClient(GeocodingClient):
 
     def set_coordinates(self, city: str) -> None:
         """Resolve and cache coordinates for *city* on this client instance."""
-        self.coordinates = self.get_coordinates(city)
-
-    # Open-Meteo ranks results by relevance; index 0 is the closest match to the query.
-    def get_coordinates(self, city: str) -> Coordinates:
-        param_validation = GeocodingParams(name=city)
-        params = {
-            "name": param_validation.name
-        }
-        coordinate_data: dict[Any, Any] = self._make_request(params=params)
+        param_validation = OpenMeteoParams(name=city)
+        coordinate_data: dict[Any, Any] = self._make_request(
+            params=param_validation.model_dump()
+        )
         if coordinate_data.get("results") is None:
             Console().print(
                 f"City - '{city}', could not be found. "
@@ -54,7 +60,11 @@ class OpenMeteoClient(GeocodingClient):
             )
             raise ValueError
 
-        return Coordinates(
+        self.coordinates = Coordinates(
             latitude=coordinate_data["results"][0]["latitude"],
-            longitude=coordinate_data["results"][0]["longitude"]
+            longitude=coordinate_data["results"][0]["longitude"],
         )
+
+    # Open-Meteo ranks results by relevance; index 0 is the closest match to the query.
+    def get_coordinates(self) -> Coordinates:
+        return self.coordinates

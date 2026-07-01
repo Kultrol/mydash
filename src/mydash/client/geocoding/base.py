@@ -7,6 +7,8 @@ Downstream weather clients consume :class:`~mydash.client.geocoding.schemas.Coor
 from abc import abstractmethod
 from typing import Any, Protocol
 
+import httpx
+
 from mydash.client.geocoding.schemas import Coordinates
 
 
@@ -18,6 +20,13 @@ class GeocodingClient(Protocol):
         - Stateful: call ``set_coordinates(city)`` then read cached result (not yet
           implemented on all providers).
     """
+
+    @abstractmethod
+    def __init__(self) -> None:
+        self.client: httpx.Client
+        self.url: httpx.URL
+        self.timeout: int
+        self.coordinates: Coordinates
 
     @abstractmethod
     def _make_request(self, params) -> Any:
@@ -34,7 +43,7 @@ class GeocodingClient(Protocol):
         :param city: Human-readable place name (e.g. "Miami").
         """
 
-    def get_coordinates(self, city: str) -> Coordinates:
+    def get_coordinates(self) -> Coordinates:
         """Resolve *city* to latitude/longitude without requiring prior ``set_coordinates``.
 
         :param city: Human-readable place name.
