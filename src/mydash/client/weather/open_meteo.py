@@ -21,14 +21,14 @@ class OpenMeteoClient(WeatherClient):
 
     def __init__(self):
         self.client = httpx.Client()
-        self.url = "https://api.open-meteo.com/v1/forecast"
+        self.url = httpx.URL("https://api.open-meteo.com/v1/forecast")
         self.timeout = 10
         self.coordinates: Coordinates | None = None
         self.weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
     def _make_request(self, params) -> Any:
         try:
-            res = self.client.get(self.url, params=params, timeout=self.timeout)
+            res = self.client.get(url=self.url, params=params, timeout=self.timeout)
             res.raise_for_status()
             return res.json()
 

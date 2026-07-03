@@ -13,7 +13,6 @@ Intended command flow (not yet implemented):
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
 from rich.traceback import install
 
 from mydash.client.geocoding.factory import get_geocoding_client
@@ -64,6 +63,13 @@ def news_watch():
     news_client.set_news_headlines()
     news_headlines = news_client.get_news_headlines()
     console.print(news_headlines)
+
+
+@app.command("brief")
+def brief():
+    weather_watch()
+    news_watch()
+    stock_watch()
 
 
 if __name__ == "__main__":

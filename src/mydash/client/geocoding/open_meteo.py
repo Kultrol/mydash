@@ -43,16 +43,18 @@ class OpenMeteoClient(GeocodingClient):
             res = self.client.get(self.url, params=params, timeout=self.timeout)
             res.raise_for_status()
             return res.json()
+        except httpx.HTTPStatusError as err:
+            Console().print(f"Status Error occured: {err.response.status_code}")
+            raise err
         except httpx.HTTPError as err:
-            Console().log(f"HTTP Exception for {err.request.url} - {err}")
-            raise
+            raise err
+        except Exception as err:
+            raise err
 
     def set_coordinates(self, city: str) -> None:
         """Resolve and cache coordinates for *city* on this client instance."""
         param_validation = OpenMeteoParams(name=city)
-        coordinate_data: dict[Any, Any] = self._make_request(
-            params=param_validation.model_dump()
-        )
+        coordinate_data = self._make_request(params=param_validation.model_dump())
         if coordinate_data.get("results") is None:
             Console().print(
                 f"City - '{city}', could not be found. "
