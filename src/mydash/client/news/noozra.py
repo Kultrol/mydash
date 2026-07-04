@@ -6,14 +6,12 @@ No API key required.
 
 from typing import Any
 
-from mydash.client.news.base import NewsClient
-from mydash.client.news.schemas import NewsHeadlines, HeadLine
-
+import httpx
+from pydantic import BaseModel, ValidationError
 from rich.console import Console
 
-from pydantic import BaseModel, ValidationError
-
-import httpx
+from mydash.client.news.base import NewsClient
+from mydash.client.news.schemas import HeadLine, NewsHeadlines
 
 
 class NoozraParams(BaseModel):
@@ -46,25 +44,23 @@ class NoozraClient(NewsClient):
             console.print_exception(show_locals=True)
             raise
 
-    def set_news_headlines(self, category: str = "politics") -> None:
-        try:
-            params = NoozraParams(category=category)
-            raw_news_headlines = self._make_request(params=params)
-            # Map each API article dict to a validated HeadLine model.
-            for article in raw_news_headlines["articles"]:
-                self.news_headlines.headlines.append(
-                    HeadLine(
-                        headline=article["headline"],
-                        publication=article["source"],
-                        description=article["description"],
-                        source_url=article["url"],
-                        category=article["category"],
-                        published_time=article["published_at"]
-                    )
-                )
-        except ValidationError as err:
-            console.log(f"Noozra Params Validation Error: {err}")
-            console.print_exception(show_locals=True)
+    def set_news_headlines(self, category: str) -> None:
+        params = NoozraParams(category=category)
+        raw_news_headlines = self._make_request(params=params)
+        if raw_news_headlines.get("articles") is None:
+            raise ValueError
+
+        # Map each API article dict to a validated HeadLine model.
+        for article in raw_news_headlines["articles"]:
+            new_headline = HeadLine(
+                headline=article.get("headline"),
+                publication=article.get("source"),
+                description=article.get("description"),
+                source_url=article.get("url"),
+                category=article.get("category"),
+                published_time=article.get("published_at"),
+            )
+            self.news_headlines.headlines.append(new_headline)
 
     def get_news_headlines(self) -> NewsHeadlines:
         return self.news_headlines
