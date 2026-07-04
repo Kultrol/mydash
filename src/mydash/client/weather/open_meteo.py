@@ -31,10 +31,11 @@ class OpenMeteoClient(WeatherClient):
             res = self.client.get(url=self.url, params=params, timeout=self.timeout)
             res.raise_for_status()
             return res.json()
-
+        except httpx.HTTPStatusError as err:
+            raise err
         except httpx.HTTPError as err:
             Console().log(f"HTTP Exception for {err.request.url} - {err}")
-            raise
+            raise err
 
     def set_coordinates(self, coordinates: Coordinates) -> None:
         """Store coordinates for subsequent forecast requests."""
