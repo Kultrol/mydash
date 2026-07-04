@@ -8,6 +8,7 @@ TODO(docs): document required .env.example variables and Alpaca setup in README.
 """
 
 from mydash.client.stocks.base import StockClient
+
 from .alpaca import AlpacaClient
 
 
@@ -18,7 +19,7 @@ def get_stock_client(provider: str = "alpaca", **config) -> StockClient:
     :param config: Reserved for future provider-specific configuration.
     :raises ValueError: If *provider* is not recognized.
     """
-    if provider == "alpaca":
+    if provider == "alpaca" or provider == "" or provider is None:
         return AlpacaClient()
     else:
         raise ValueError("Unknown provider. Please choose a valid provider")

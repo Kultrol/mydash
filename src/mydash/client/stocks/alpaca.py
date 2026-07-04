@@ -45,10 +45,11 @@ class AlpacaClient(StockClient):
             "https://data.alpaca.markets/v2/stocks/quotes/latest"
         )
         self.bars_url = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
+        # Call load_dotenv in a different location. Not in this file.
         load_dotenv()
         if (
             os.getenv("STOCK_ALPACA_API_KEY_ID") is not None
-            or os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None
+            and os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None
         ):
             self.headers = AlpacaHeaders(
                 api_key=os.getenv("STOCK_ALPACA_API_KEY_ID"),

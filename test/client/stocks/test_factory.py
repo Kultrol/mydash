@@ -5,9 +5,40 @@ Strategy: direct instantiation checks; requires alpaca_env fixture for AlpacaCli
 Depends on: conftest.alpaca_env
 """
 
+import pytest
+
+from src.mydash.client.stocks.base import StockClient
+from src.mydash.client.stocks.factory import get_stock_client
+
+
 # --- Factory ---
-#
-# TODO(testing): default/no provider returns AlpacaClient instance when env vars set —
-#   use alpaca_env fixture; assert isinstance(get_stock_client(), AlpacaClient)
-#
+@pytest.mark.parametrize(
+    argnames="mock_provider, expected_provider",
+    argvalues=[
+        (None, "AlpacaClient"),
+        ("alpaca", "AlpacaClient"),
+        ("", "AlpacaClient"),
+    ],
+)
+def test_get_stock_client_valid_provider_return_stock_client_instance(
+    mock_provider, expected_provider
+):
+    stock_client: StockClient = get_stock_client(mock_provider)
+    assert stock_client.__class__.__name__ == expected_provider
+
+
 # TODO(testing): unknown provider raises ValueError — parametrize invalid names
+@pytest.mark.parametrize(
+    argnames="mock_provider, expected_error",
+    argvalues=[
+        (2, ValueError),
+        ("hoopla", ValueError),
+        ({}, ValueError),
+    ],
+)
+def test_get_stock_client_invalid_provider_raise_value_error(
+    mock_provider, expected_error
+):
+    with pytest.raises(expected_error) as err:
+        get_stock_client(mock_provider)
+    assert isinstance(err.value, expected_error)

@@ -60,7 +60,7 @@ def stock_watch():
 @app.command("news")
 def news_watch():
     news_client = get_news_client()
-    news_client.set_news_headlines()
+    news_client.set_news_headlines(category="politics")
     news_headlines = news_client.get_news_headlines()
     console.print(news_headlines)
 

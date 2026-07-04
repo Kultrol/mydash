@@ -1,32 +1,72 @@
-"""Tests for mydash.client.stocks.alpaca.
+"""Tests for mydash.client.stocks.alpaca."""
 
-Target: AlpacaClient, AlpacaParams
-Usage pattern: set_current_stock_quotes() then get_current_stock_quotes()
-Strategy: monkeypatch env vars; patch _make_request with bars JSON
-Depends on: conftest.alpaca_env, conftest.sample_alpaca_bars
-"""
+from unittest.mock import patch
+
+import pytest
+
+from mydash.client.stocks.base import StockClient
+from src.mydash.client.stocks.factory import get_stock_client
+
 
 # --- __init__ / credentials ---
-#
-# TODO(testing): missing env vars raises ValueError on AlpacaClient()
-#
-# TODO(testing): reads STOCK_ALPACA_API_KEY_ID and STOCK_ALPACA_API_SECRET_KEY
-#   (not STOCK_APCA_*) — assert client.headers.api_key and api_secret
-#
-# TODO(testing): URL is base path without hardcoded ?symbols=SPY query string
+@pytest.mark.parametrize(
+    argnames="mock_env_api_key, mock_env_api_secret, expected_error",
+    argvalues=[("STOCK_ALPACA_API_KEY_ID", "STOCK_ALPACA_API_SECRET_KEY", ValueError)],
+)
+def test__init__missing_env_items_raise_value_error(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_env_api_key,
+    mock_env_api_secret,
+    expected_error,
+) -> None:
+    monkeypatch.delenv(mock_env_api_key, raising=False)
+    monkeypatch.delenv(mock_env_api_secret, raising=False)
+    with patch("src.mydash.client.stocks.alpaca.load_dotenv"):
+        with pytest.raises(expected_error) as err:
+            _ = get_stock_client()
+        assert isinstance(err.value, expected_error)
 
-# --- AlpacaParams ---
-#
-# TODO(testing): to_query_params() serializes symbols as comma-separated string —
-#   AlpacaParams(symbols=["SPY","AAPL","MSFT"]) → {"symbols": "SPY,AAPL,MSFT"}
 
-# --- set_current_stock_quotes ---
-#
-# TODO(testing): parses bars response with ap, bp, t per ticker —
-#   patch _make_request; assert StockQuote ask_price, bid_price, time, ticker_name
-#
-# TODO(testing): handles response wrapped in {"bars": {...}} via response.get("bars", response)
+@pytest.mark.parametrize(
+    argnames="mock_missing_env, expected_error",
+    argvalues=[
+        ("STOCK_ALPACA_API_KEY_ID", ValueError),
+        ("STOCK_ALPACA_API_SECRET_KEY", ValueError),
+    ],
+)
+def test__init__missing_env_item_raise_value_error(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_missing_env,
+    expected_error,
+) -> None:
+    monkeypatch.delenv(mock_missing_env, raising=False)
+    with patch("src.mydash.client.stocks.alpaca.load_dotenv"):
+        with pytest.raises(expected_error) as err:
+            _ = get_stock_client()
+        assert isinstance(err.value, expected_error)
 
-# --- _make_request / HTTP errors ---
-#
-# TODO(testing): HTTP error propagates httpx.HTTPError — mock client.client.get failure
+
+@pytest.mark.parametrize(
+    argnames="mock_env_api_key, mock_env_api_key_value, mock_env_api_secret, mock_env_api_secret_value",
+    argvalues=[
+        (
+            "STOCK_ALPACA_API_KEY_ID",
+            "test_key",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "test_secret",
+        )
+    ],
+)
+def test__init__sets_env_items(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_env_api_key,
+    mock_env_api_secret,
+    mock_env_api_key_value,
+    mock_env_api_secret_value,
+) -> None:
+    monkeypatch.setenv(mock_env_api_key, mock_env_api_key_value)
+    monkeypatch.setenv(mock_env_api_secret, mock_env_api_secret_value)
+    stock_client: StockClient = get_stock_client("alpaca")
+    # headers are a valid attribute, error detected due to basedpyright not detecting AlpacaClient Class in this case.
+    assert stock_client.headers.api_key == mock_env_api_key_value
+    assert stock_client.headers.api_secret == mock_env_api_secret_value
