@@ -191,6 +191,8 @@ Parts of this codebase were built with [Grok Build](https://x.ai/cli) — in the
 
 MIT — see [`LICENSE`](LICENSE).
 
+You may fork, modify, and reuse mydash code, including in commercial projects. If you use any part of this project, you must give credit by keeping the copyright notice and MIT license terms on the mydash code you used. Your own additions and your overall project may use any license you choose.
+
 ## 🙏 Acknowledgments
 
 - [Open-Meteo](https://open-meteo.com/) for free weather and geocoding APIs
