@@ -51,8 +51,7 @@ class NoozraClient(NewsClient):
             raise ValueError
 
         # Map each API article dict to a validated HeadLine model.
-        # TODO(correctness): headlines list is appended without reset — repeated fetches
-        # accumulate stale entries.
+        self.news_headlines = NewsHeadlines(headlines=[])
         for article in raw_news_headlines["articles"]:
             new_headline = HeadLine(
                 headline=article.get("headline"),
