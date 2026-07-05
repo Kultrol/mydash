@@ -76,7 +76,7 @@ class AlpacaClient(StockClient):
             }
             # TODO(correctness): no request timeout — can hang indefinitely on slow networks.
             response = self.client.get(
-                url, params=params.to_query_params(), headers=headers
+                url, params=params.to_query_params(), headers=headers, timeout=10
             )
             response.raise_for_status()
             return response.json()
@@ -91,6 +91,7 @@ class AlpacaClient(StockClient):
         quotes: Dict[Any, Any] = response.get("quotes", response)
         # TODO(correctness): quotes list is appended without reset — repeated fetches
         # accumulate stale entries.
+        self.stock_quotes = StockQuotes(quotes=[])
         for ticker in params.symbols:
             self.stock_quotes.quotes.append(
                 StockQuote(
@@ -109,8 +110,7 @@ class AlpacaClient(StockClient):
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
         response = self._make_request(url=self.bars_url, params=params)
         bars: Dict[Any, Any] = response.get("bars", response)
-        # TODO(correctness): bars list is appended without reset — repeated fetches
-        # accumulate stale entries.
+        self.stock_bars = StockBars(bars=[])
         for ticker in params.symbols:
             self.stock_bars.bars.append(
                 StockBar(
