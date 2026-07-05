@@ -4,8 +4,8 @@ import httpx
 
 from mydash.client.http_api.errors import (
     HttpApiError,
-    HttpApiRequestError,
-    HttpStatusCodeError,
+    RequestError,
+    StatusCodeError,
 )
 
 
@@ -32,9 +32,9 @@ class HttpApiClient:
             response.raise_for_status()
             return response.json()
         except httpx.RequestError as err:
-            raise HttpApiRequestError(url=err.request.url)
+            raise RequestError(url=err.request.url)
         except httpx.HTTPStatusError as err:
-            raise HttpStatusCodeError(err.request.url, err.response.status_code)
+            raise StatusCodeError(err.request.url, err.response.status_code)
         except httpx.HTTPError as err:
             raise HttpApiError(err)
         finally:
