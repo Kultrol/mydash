@@ -7,7 +7,7 @@ read via ``get_news_headlines``.
 from abc import abstractmethod
 from typing import Any, Protocol
 
-from .schemas import NewsHeadlines
+from mydash.client.news.schemas import NewsHeadlines
 
 
 class NewsClient(Protocol):

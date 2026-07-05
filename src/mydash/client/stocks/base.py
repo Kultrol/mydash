@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from .schemas import StockBars, StockQuotes
+from mydash.client.stocks.schemas import StockBars, StockQuotes
 
 
 class StockClient(Protocol):

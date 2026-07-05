@@ -4,8 +4,8 @@ Selects a concrete provider implementation by name. The ``**config`` kwargs are
 reserved for future per-provider settings (API keys, timeouts, base URLs).
 """
 
-from .base import GeocodingClient
-from .open_meteo import OpenMeteoClient
+from mydash.client.geocoding.base import GeocodingClient
+from mydash.client.geocoding.providers.open_meteo import OpenMeteoClient
 
 
 def get_geocoding_client(provider: str = "open-meteo", **config) -> GeocodingClient:

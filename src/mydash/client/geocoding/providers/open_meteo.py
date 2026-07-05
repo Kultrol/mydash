@@ -10,8 +10,8 @@ import httpx
 from pydantic import BaseModel
 from rich.console import Console
 
-from .base import GeocodingClient
-from .schemas import Coordinates
+from mydash.client.geocoding.base import GeocodingClient
+from mydash.client.geocoding.schemas import Coordinates
 
 
 # Open-Meteo's Geocoding API is mature, so its query parameters are modeled here

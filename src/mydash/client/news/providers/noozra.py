@@ -7,7 +7,7 @@ No API key required.
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from rich.console import Console
 
 from mydash.client.news.base import NewsClient

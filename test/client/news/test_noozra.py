@@ -13,8 +13,8 @@ import pytest
 from pydantic import ValidationError
 
 from mydash.client.news.base import NewsClient
-from src.mydash.client.news.factory import get_news_client
-from src.mydash.client.news.noozra import NoozraParams
+from mydash.client.news.factory import get_news_client
+from mydash.client.news.providers.noozra import NoozraParams
 
 # --- set_news_headlines ---
 

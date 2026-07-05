@@ -11,9 +11,8 @@ import httpx
 from rich.console import Console
 
 from mydash.client.geocoding.schemas import Coordinates
-
-from .base import WeatherClient
-from .schemas import DayForecast, HourForecast, MultiDayForecast
+from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
 
 
 class OpenMeteoClient(WeatherClient):

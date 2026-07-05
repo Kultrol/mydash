@@ -12,8 +12,8 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from mydash.client.geocoding.factory import get_geocoding_client
 from mydash.client.geocoding.schemas import Coordinates
-from src.mydash.client.geocoding.factory import get_geocoding_client
 
 
 # --- _make_request / HTTP errors ---
