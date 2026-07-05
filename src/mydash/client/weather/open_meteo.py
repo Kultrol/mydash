@@ -85,6 +85,8 @@ class OpenMeteoClient(WeatherClient):
             uv_index: float = hourly_data["uv_index"][index]
 
             # When the calendar day changes, finalize the previous day and start a new one.
+            # TODO(correctness): grouping by day-of-month only — hours from different months
+            # can land in the same DayForecast bucket.
             if current_day.day != time.day:
                 if index != 0:
                     weather_forecast.days.append(current_day)

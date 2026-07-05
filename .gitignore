@@ -17,3 +17,6 @@ wheels/
 #Misc
 .idea
 .python-version
+
+
+docs/

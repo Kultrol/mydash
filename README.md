@@ -1,106 +1,168 @@
 # mydash 🌟
 
 > **Your personal daily dashboard in the terminal.**  
-> Beautifully aggregated insights on weather, news, markets, calendar, and AI-powered briefs.
+> Weather, news, markets, and eventually calendar and AI-powered briefs — all in one place.
 
 [![Python](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Status](https://img.shields.io/badge/status-active%20development-orange)](https://github.com/Kultrol/mydash)
 
-**mydash** is a modern, extensible command-line interface (CLI) dashboard built with Python. It fetches data from multiple public APIs and presents it in a clean, information-dense, and visually appealing way using Rich.
+**mydash** is a command-line dashboard built with Python. It pulls data from public APIs and presents it in the terminal using Rich. The goal is a **production-ready three-layer application** — presentation, orchestration, and data — with clear boundaries invested in early so the CLI can grow without costly rewrites later.
 
-Currently focused on weather with plans to expand into a full daily briefing tool.
+> ⚠️ **Active development:** APIs, commands, configuration, and project layout are all evolving. Expect breaking changes.
 
-## ✨ Current Features (v0.1.0)
+---
 
-- 🌍 **Smart Geocoding** — Enter any city name; automatically resolves to coordinates via Open-Meteo Geocoding API.
-- 🌤️ **Weather Dashboard** — Detailed current conditions + forecast using the excellent free [Open-Meteo](https://open-meteo.com/) API.
-  - Clean Rich-formatted output (tables, panels, colors)
-- 🏗️ **Clean Architecture** — Factory + abstract base + implementation pattern for easy addition of new data sources.
-- ⚡ **Fast & Async-ready** — Built on `httpx` for efficient HTTP requests.
+## 📍 Status
 
-### Example
+### What you can try today (v0.1)
 
-```bash
-# Smoke-test command to confirm the CLI launches via uv (prints "Hello World")
-uv run src/mydash/cli/main.py
-uv run python -m mydash.cli.main
+| Area | State |
+|------|--------|
+| 🌍 Geocoding + weather | Open-Meteo integration; functional with known correctness gaps |
+| 📰 News headlines | Noozra integration; category hardcoded in places |
+| 📊 Stock quotes & bars | Alpaca integration; requires API keys in `.env` |
+| 📋 `brief` command | Chains weather, news, and stocks — no dedicated orchestration layer yet |
+
+### What we're building toward
+
+A stable terminal app where commands stay thin, business logic lives in a services layer, and the client layer focuses on provider APIs and parsing. Presentation (Rich tables and panels) stays separate from data fetching. There is a large backlog of correctness fixes, tests, structure, and polish before that target is met — and that's okay; I'd rather get the foundation right.
+
+---
+
+## 🏗️ Architecture
+
+Target shape — three layers, one direction of dependency:
+
+```mermaid
+flowchart LR
+    CLI["Presentation: Typer + Rich"]
+    SVC["Orchestration: services + config"]
+    DATA["Data: client providers"]
+    CLI --> SVC --> DATA
 ```
 
-## 🚀 Roadmap & Planned Features
+| Layer | Responsibility |
+|-------|----------------|
+| **Presentation** | Commands, flags, terminal layout — no HTTP or provider parsing |
+| **Orchestration** | Multi-step flows, user settings, brief aggregation, DTOs |
+| **Data** | Factories, protocols, API calls, schemas per domain (geocoding, weather, news, stocks) |
 
-- [ ] `daily-brief` command — One command to rule them all (weather + news + markets + calendar + AI summary)
-- [ ] 📰 News integration (top headlines, personalized topics)
-- [ ] 📊 Financial markets overview (indices, watchlist, crypto)
-- [ ] 📅 Calendar & tasks integration (local iCal, Google Calendar via API, or simple todo)
-- [ ] 🤖 AI Post-processing — Use LLMs (local or API) to generate personalized insights, "what matters today", summaries
-- [ ] 📍 Reverse geocoding + auto location detection
-- [ ] Configuration system (`.env.example`, TOML config, API keys management)
-- [ ] Theming / more Rich components (spinners, live updates, ASCII art weather icons?)
-- [x] Packaging & distribution (`pip install -e .` / `uv sync` with hatchling src layout)
-- [ ] Tests, CI/CD, docs
+Each data domain follows a factory + protocol + provider implementation pattern so new sources can be added without rewriting the stack.
 
-## 🛠 Tech Stack & Design
+---
 
-| Component     | Technology                  | Purpose                          |
-|---------------|-----------------------------|----------------------------------|
-| CLI Framework | [Typer](https://typer.tiangolo.com/) | Intuitive commands & help        |
-| Terminal UI   | [Rich](https://rich.readthedocs.io/) | Beautiful tables, colors, panels |
-| HTTP Client   | [httpx](https://www.python-httpx.org/) | Async-capable API calls         |
-| Validation    | [Pydantic](https://docs.pydantic.dev/) | Schemas & settings               |
-| Env Vars      | python-dotenv               | Secure credential management     |
-| Packaging     | uv + pyproject.toml         | Fast, modern Python tooling      |
+## 🛠 Tech stack
 
-**Architecture highlights**:
-- `src/mydash/client/` package with pluggable data sources (weather, geocoding, news, stocks)
-- Each domain has `base.py` (abstract), `factory.py`, concrete impl (e.g. `open_meteo.py`), and `schemas.py`
-- Easy to add new providers (e.g. WeatherAPI, NewsAPI, Alpha Vantage, etc.)
+| Component | Technology | Role |
+|-----------|------------|------|
+| CLI | [Typer](https://typer.tiangolo.com/) | Commands and help |
+| Terminal UI | [Rich](https://rich.readthedocs.io/) | Tables, panels, color |
+| HTTP | [httpx](https://www.python-httpx.org/) | Provider API calls |
+| Schemas | [Pydantic](https://docs.pydantic.dev/) | Models, settings, DTOs |
+| Secrets | python-dotenv | `.env` for API keys |
+| Tooling | [uv](https://docs.astral.sh/uv/) + hatchling | Install, run, package |
+
+**Planned (CLI stage):** TOML user config, pytest-cov, CI pipeline.
+
+---
 
 ## 📦 Installation
-
-### 1. Clone & Setup
 
 ```bash
 git clone https://github.com/Kultrol/mydash.git
 cd mydash
 ```
 
-### 2. Configure environment variables (optional)
+Optional — stock data requires Alpaca credentials:
 
 ```bash
 cp .env.example .env
-# Edit .env with your API keys (only needed for stocks/Alpaca features)
+# Add STOCK_ALPACA_API_KEY_ID and STOCK_ALPACA_API_SECRET_KEY
 ```
-
-### 3. Install dependencies (recommended: uv)
 
 ```bash
-# Install uv if you don't have it: https://docs.astral.sh/uv/getting-started/installation/
-uv sync  # installs dependencies and the mydash package in editable mode
+# Install uv: https://docs.astral.sh/uv/getting-started/installation/
+uv sync
 ```
 
-Or with pip:
+Or with pip: `python -m venv .venv`, activate, then `pip install -e .`.
+
+Open-Meteo (geocoding and weather) needs no API key. Commands and flags may change between releases while the project is in active development.
+
+---
+
+## Usage
+
+Under the **current application regime**, these commands are available:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-pip install -e .
+uv run python -m mydash.cli.main weather
+uv run python -m mydash.cli.main news
+uv run python -m mydash.cli.main stocks    # requires .env Alpaca keys
+uv run python -m mydash.cli.main brief
+uv run python -m mydash.cli.main --help
 ```
 
-### 4. Run it
+Output is raw model dumps in places — dedicated renderers and config-driven defaults are on the roadmap. If something fails, check that dependencies are installed (`uv sync`) and that stock keys are set when using `stocks` or `brief`.
 
-```bash
-# Smoke-test command (verifies uv run / packaging, not app logic)
-uv run src/mydash/cli/main.py
+---
 
-# Equivalent module invocation
-uv run python -m mydash.cli.main
+## 🚀 Roadmap
 
-# Help
-uv run src/mydash/cli/main.py --help
-```
+A lot remains before mydash is production-ready. Work is staged roughly in dependency order.
 
-> **Note**: No API keys required for current features (Open-Meteo is free & keyless). Future features will support optional keys via `.env.example` (copy to `.env` locally).
+### Phase 1 — Data correctness
+
+- [ ] Fix weather forecast day-boundary grouping
+- [ ] Replace-on-fetch cache semantics for news and stocks
+- [ ] HTTP timeout parity for Alpaca (match other clients)
+
+### Phase 2 — Test foundation
+
+- [ ] Shared pytest fixtures and sample API payloads
+- [ ] Stock tests that do not depend on a local `.env`
+- [ ] Weather forecast parser coverage (including month boundaries)
+- [ ] News and Alpaca success-path and field-mapping tests
+- [ ] Cache contamination regression tests
+- [ ] Centralized HTTP error test helpers
+
+### Phase 3 — Three-layer CLI
+
+- [ ] Services layer for weather, news, and stocks
+- [ ] Brief orchestration service with partial-failure handling
+- [ ] Central configuration (city, categories, watchlist, secrets bootstrap)
+- [ ] Split commands and domain Rich renderers
+- [ ] `daily-brief` as the primary aggregated command (`brief` alias during transition)
+- [ ] Config-driven inputs instead of hardcoded city and category
+
+### Phase 4 — Client hardening and quality
+
+- [ ] Shared HTTP layer across domain clients
+- [ ] Consistent factory behavior and injectable settings
+- [ ] Weather parser extracted for isolated testing
+- [ ] Configurable stock watchlist
+- [ ] Secrets loaded at app entry, not inside client constructors
+- [ ] Domain exception hierarchy and structured logging in clients
+- [ ] Provider response validation models
+- [ ] Test import consistency and duplicate test cleanup
+- [ ] Coverage reporting and CI
+
+### Packaging and scaffolding (under review)
+
+- [ ] Packaging workflow (`uv sync`, hatchling src layout) — to be revisited
+- [ ] Client scaffolding (geocoding, weather, news, stocks) — active development
+
+### Later — expanded CLI
+
+- [ ] Calendar and tasks integration
+- [ ] AI-generated brief insights
+- [ ] Reverse geocoding and automatic location
+- [ ] Theming and richer terminal layouts
+
+Track epics and tasks on the [GitHub Roadmap](https://github.com/Kultrol/mydash/issues?q=is%3Aopen+label%3Atype%3Aepic).
+
+---
 
 ## 🧪 Development
 
@@ -109,37 +171,34 @@ uv sync --group dev
 uv run pytest
 ```
 
-Contributions, ideas, and feedback are welcome! This is a personal learning/experimentation project focused on clean code, good UX in the terminal, and practical data aggregation.
+Contributions, ideas, and feedback are welcome. This is a personal project — I'm learning as I go — focused on clean structure, good terminal UX, and reliable data aggregation.
 
-### Adding a new data source
+### Where this is headed
 
-1. Implement the abstract base in `src/mydash/client/<domain>/base.py`
-2. Create concrete class in e.g. `src/mydash/client/<domain>/my_provider.py`
-3. Register in `factory.py`
-4. Add Typer command in `src/mydash/cli/main.py`
+Today mydash centers on weather, news, and markets — but the architecture is meant to support more. Over time I'd like to plug in calendar and tasks, commute or travel context, health or fitness summaries, local events, and AI-generated "what matters today" briefs, all feeding the same daily dashboard.
 
-## 🤖 AI-assisted development (Grok Build)
-
-Parts of this project were built with [Grok Build](https://x.ai/) in Cursor. I use it primarily to:
-
-- Resolve small technical issues (e.g. fixing `.env` git tracking, import path errors)
-- Add clear module comments and `TODO` markers so gaps are easy to find
-- Implement straightforward fixes — typos, env var name corrections, missing protocol methods (such as `set_coordinates` on the geocoding client)
-
-Larger design and CLI features are written and reviewed by me. AI-assisted changes are developed on `grok/*` branches and merged after manual review and `pytest`.
-
-## 📄 License
-
-This project is licensed under the MIT License. See `LICENSE` file for details (to be added shortly).
-
-## 🙏 Acknowledgments
-
-- [Open-Meteo](https://open-meteo.com/) for fantastic free weather & geocoding APIs
-- The amazing Python CLI community (Typer, Rich authors)
-- Inspiration from tools like `wttr.in`, `neofetch`, and various TUI dashboards
+How new domains get added (client → service → renderer → brief) will be documented properly once the three-layer CLI is stable. Until then, treat this as the vision, not a step-by-step guide.
 
 ---
 
-**Built with ❤️ by [Kevin Medina](https://github.com/Kultrol) • Miami, FL**
+## AI-assisted development
 
-*Last updated: June 2026 • Actively iterating*
+Parts of this codebase were built with [Grok Build](https://x.ai/cli) — in the Cursor editor and via the Cursor model on the command line. That work includes small fixes, comments, `TODO` markers, and targeted patches. Design and larger features are reviewed manually. AI-assisted changes land on `grok/*` branches before merge and `pytest`.
+
+---
+
+## 📄 License
+
+MIT — see [`LICENSE`](LICENSE).
+
+## 🙏 Acknowledgments
+
+- [Open-Meteo](https://open-meteo.com/) for free weather and geocoding APIs
+- Typer and Rich maintainers and the Python CLI community
+- Inspiration from `wttr.in`, neofetch, and terminal dashboards
+
+---
+
+**Built with ❤️ by [Kevin Medina](https://github.com/Kultrol) · Miami, FL**
+
+*Last updated: July 2026 · Actively iterating*

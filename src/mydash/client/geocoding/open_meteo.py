@@ -29,6 +29,8 @@ class OpenMeteoClient(GeocodingClient):
         self.client = httpx.Client()
         self.url = httpx.URL("https://geocoding-api.open-meteo.com/v1/search")
         self.timeout = 10
+        # TODO(correctness): (0, 0) default masks unset state — get_coordinates() can
+        # return a valid-looking point before set_coordinates() runs.
         self.coordinates: Coordinates = Coordinates(latitude=0, longitude=0)
 
     def _make_request(self, params: dict[Any, Any]) -> Any:

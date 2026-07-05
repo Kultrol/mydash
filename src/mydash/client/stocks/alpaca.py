@@ -46,6 +46,8 @@ class AlpacaClient(StockClient):
         )
         self.bars_url = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
         # Call load_dotenv in a different location. Not in this file.
+        # TODO(architecture): load_dotenv() in __init__ couples client construction to
+        # process env — explore centralizing env loading (factory or app bootstrap).
         load_dotenv()
         if (
             os.getenv("STOCK_ALPACA_API_KEY_ID") is not None
@@ -72,6 +74,7 @@ class AlpacaClient(StockClient):
                 "APCA-API-SECRET-KEY": self.headers.api_secret,
                 "content-type": self.headers.accept,
             }
+            # TODO(correctness): no request timeout — can hang indefinitely on slow networks.
             response = self.client.get(
                 url, params=params.to_query_params(), headers=headers
             )
@@ -86,6 +89,8 @@ class AlpacaClient(StockClient):
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
         response = self._make_request(url=self.quotes_url, params=params)
         quotes: Dict[Any, Any] = response.get("quotes", response)
+        # TODO(correctness): quotes list is appended without reset — repeated fetches
+        # accumulate stale entries.
         for ticker in params.symbols:
             self.stock_quotes.quotes.append(
                 StockQuote(
@@ -104,6 +109,8 @@ class AlpacaClient(StockClient):
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
         response = self._make_request(url=self.bars_url, params=params)
         bars: Dict[Any, Any] = response.get("bars", response)
+        # TODO(correctness): bars list is appended without reset — repeated fetches
+        # accumulate stale entries.
         for ticker in params.symbols:
             self.stock_bars.bars.append(
                 StockBar(

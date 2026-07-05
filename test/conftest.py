@@ -23,5 +23,8 @@ httpx layer (``client.client.get``) or patching ``_make_request`` on clients.
 #
 # TODO(testing): sample_noozra_articles — reusable articles array for news tests.
 #
-# TODO(testing): sample_alpaca_bars — reusable bars dict keyed by ticker
+# TODO(testing): sample_alpaca_quotes — reusable quotes dict keyed by ticker
 #   (ap, bp, t fields) for stock quote parsing tests.
+#
+# TODO(testing): sample_alpaca_bars — reusable bars dict keyed by ticker
+#   (o, c, t fields) for stock bar parsing tests.

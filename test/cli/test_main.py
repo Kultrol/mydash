@@ -2,29 +2,30 @@
 
 Target: Typer app and commands in cli/main.py
 Strategy: use typer.testing.CliRunner; mock factory functions or patch client methods
-Depends on: conftest fixtures for mocked geocoding/weather responses
+Depends on: conftest fixtures for mocked geocoding/weather/news/stock responses
 """
 
-# --- greeting command (current smoke/integration test) ---
+# --- weather command ---
 #
-# TODO(testing): greeting runs without error via CliRunner —
+# TODO(testing): weather runs without error via CliRunner —
 #   patch get_geocoding_client and get_weather_client to return mocks
 #
-# TODO(testing): greeting orchestrates geocoding → weather pipeline —
-#   verify set_coordinates("Miami") called on geocoding client,
-#   get_coordinates() returns Coordinates passed to weather client.set_coordinates,
+# TODO(testing): weather orchestrates geocoding → weather pipeline —
+#   verify set_coordinates called on geocoding client,
+#   Coordinates passed to weather client.set_coordinates,
 #   set_weather_forecast() and get_weather_forecast() called
 
-# --- Future commands (not yet implemented in src) ---
+# --- news command ---
 #
-# TODO(testing): weather command — resolve city, display forecast via Rich
-#   (implement after TODO(connection) in cli/main.py)
+# TODO(testing): news command — fetch headlines with configurable category;
+#   patch get_news_client, assert set_news_headlines(category=...) called
+
+# --- stocks command ---
 #
-# TODO(testing): news command — fetch headlines with configurable category
-#   (implement after TODO(connection) in cli/main.py)
+# TODO(testing): stocks command — fetch quotes/bars when Alpaca env vars present;
+#   patch get_stock_client and alpaca_env fixture
+
+# --- brief command ---
 #
-# TODO(testing): stocks command — fetch quotes when Alpaca env vars present
-#   (implement after TODO(connection) in cli/main.py)
-#
-# TODO(testing): daily-brief command — aggregate weather, news, stocks output
-#   (implement after TODO(connection) in cli/main.py)
+# TODO(testing): brief command — aggregates weather, news, stocks output;
+#   mock all three factories and assert each pipeline invoked once
