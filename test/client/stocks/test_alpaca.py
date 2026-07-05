@@ -1,7 +1,7 @@
 """Tests for mydash.client.stocks.alpaca."""
 
-from unittest.mock import patch
 from typing import Literal
+from unittest.mock import patch
 
 import pytest
 
@@ -67,8 +67,8 @@ def test__init__sets_env_items(
 ) -> None:
     monkeypatch.setenv(mock_env_api_key, mock_env_api_key_value)
     monkeypatch.setenv(mock_env_api_secret, mock_env_api_secret_value)
-    @overload
-    stock_client: StockClient = get_stock_client(Literal["alpaca"])
+
+    stock_client: StockClient = get_stock_client("alpaca")
     # headers are a valid attribute, error detected due to basedpyright not detecting AlpacaClient Class in this case.
     assert stock_client.headers.api_key == mock_env_api_key_value
     assert stock_client.headers.api_secret == mock_env_api_secret_value
