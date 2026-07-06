@@ -5,7 +5,7 @@ future settings such as API keys, default categories, or article limits.
 """
 
 from mydash.client.news.base import NewsClient
-from mydash.client.news.providers.noozra import NoozraClient
+from mydash.client.news.providers.noozra.noozra import NoozraClient
 
 
 def get_news_client(provider: str = "noozra", **config) -> NewsClient:

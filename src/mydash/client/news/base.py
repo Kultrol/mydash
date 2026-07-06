@@ -5,21 +5,13 @@ read via ``get_news_headlines``.
 """
 
 from abc import abstractmethod
-from typing import Any, Protocol
+from typing import Protocol
 
 from mydash.client.news.schemas import NewsHeadlines
 
 
 class NewsClient(Protocol):
     """Protocol for news headline providers."""
-
-    @abstractmethod
-    def _make_request(self, params) -> Any:
-        """Send an HTTP request to the provider API.
-
-        :param params: Query parameters (shape varies by provider).
-        :return: Parsed JSON response body.
-        """
 
     @abstractmethod
     def set_news_headlines(self, category: str) -> None:
