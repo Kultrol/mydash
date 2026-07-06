@@ -19,14 +19,15 @@
 
 | Area | State |
 |------|--------|
-| 🌍 Geocoding + weather | Open-Meteo integration; functional with known correctness gaps |
-| 📰 News headlines | Noozra integration; category hardcoded in places |
-| 📊 Stock quotes & bars | Alpaca integration; requires API keys in `.env` |
+| 🌍 Geocoding + weather | Open-Meteo integration; day-boundary grouping fixed; dev-style raw output |
+| 📰 News headlines | Noozra integration; replace-on-refetch cache; category still hardcoded |
+| 📊 Stock quotes & bars | Alpaca integration; shared HTTP client with timeout; requires `.env` keys |
+| 🔌 Data layer | `HttpApiClient` centralizes HTTP; providers live under `client/*/providers/` |
 | 📋 `brief` command | Chains weather, news, and stocks — no dedicated orchestration layer yet |
 
 ### What we're building toward
 
-A stable terminal app where commands stay thin, business logic lives in a services layer, and the client layer focuses on provider APIs and parsing. Presentation (Rich tables and panels) stays separate from data fetching. There is a large backlog of correctness fixes, tests, structure, and polish before that target is met — and that's okay; I'd rather get the foundation right.
+A stable terminal app where commands stay thin, business logic lives in a services layer, and the client layer focuses on provider APIs and parsing. Presentation (Rich tables and panels) stays separate from data fetching. Phase 1 data correctness is done; next focus is the services layer, config-driven CLI, and Rich renderers.
 
 ---
 
@@ -49,6 +50,26 @@ flowchart LR
 | **Data** | Factories, protocols, API calls, schemas per domain (geocoding, weather, news, stocks) |
 
 Each data domain follows a factory + protocol + provider implementation pattern so new sources can be added without rewriting the stack.
+
+### Current shape (today)
+
+The CLI still calls client factories directly — the services layer is stubbed. Recent refactors on `main` improved the data layer:
+
+```mermaid
+flowchart LR
+    CLI["cli/main.py"]
+    Factories["client/*/factory.py"]
+    Providers["client/*/providers/*"]
+    HttpApi["client/http_api"]
+    CLI --> Factories --> Providers --> HttpApi
+```
+
+| Piece | Location | Notes |
+|-------|----------|-------|
+| **Shared HTTP** | `client/http_api/` | `HttpApiClient.make_request()` replaces per-client `_make_request` |
+| **Providers** | `client/<domain>/providers/<name>/` | One directory per provider (Open-Meteo, Noozra, Alpaca) |
+| **Errors** | `errors.py` per domain/provider | Preliminary typed exceptions — more expected later |
+| **Secrets** | `cli/main.py` | `load_dotenv()` at app entry, not in client constructors |
 
 ---
 
@@ -112,11 +133,18 @@ Output is raw model dumps in places — dedicated renderers and config-driven de
 
 A lot remains before mydash is production-ready. Work is staged roughly in dependency order.
 
-### Phase 1 — Data correctness
+### Phase 1 — Data correctness (complete)
 
 - [X] Fix weather forecast day-boundary grouping
 - [X] Replace-on-fetch cache semantics for news and stocks
 - [X] HTTP timeout parity for Alpaca (match other clients)
+
+### Recent — client architecture
+
+- [X] Shared `HttpApiClient` across all domain clients
+- [X] Provider-per-directory layout (`client/*/providers/`)
+- [X] `load_dotenv()` at CLI bootstrap (removed from `AlpacaClient`)
+- [~] Domain error hierarchy (preliminary — more exceptions expected)
 
 ### Phase 2 — Test foundation
 
@@ -138,20 +166,13 @@ A lot remains before mydash is production-ready. Work is staged roughly in depen
 
 ### Phase 4 — Client hardening and quality
 
-- [ ] Shared HTTP layer across domain clients
 - [ ] Consistent factory behavior and injectable settings
 - [ ] Weather parser extracted for isolated testing
 - [ ] Configurable stock watchlist
-- [ ] Secrets loaded at app entry, not inside client constructors
-- [ ] Domain exception hierarchy and structured logging in clients
+- [ ] Complete domain exception hierarchy and structured logging in clients
 - [ ] Provider response validation models
-- [ ] Test import consistency and duplicate test cleanup
+- [ ] Test import consistency and duplicate test cleanup (news tests need path fixes)
 - [ ] Coverage reporting and CI
-
-### Packaging and scaffolding (under review)
-
-- [ ] Packaging workflow (`uv sync`, hatchling src layout) — to be revisited
-- [ ] Client scaffolding (geocoding, weather, news, stocks) — active development
 
 ### Later — expanded CLI
 
@@ -159,8 +180,6 @@ A lot remains before mydash is production-ready. Work is staged roughly in depen
 - [ ] AI-generated brief insights
 - [ ] Reverse geocoding and automatic location
 - [ ] Theming and richer terminal layouts
-
-Track epics and tasks on the [GitHub Roadmap](https://github.com/Kultrol/mydash/issues?q=is%3Aopen+label%3Atype%3Aepic).
 
 ---
 
@@ -170,6 +189,8 @@ Track epics and tasks on the [GitHub Roadmap](https://github.com/Kultrol/mydash/
 uv sync --group dev
 uv run pytest
 ```
+
+Client tests cover geocoding, weather, news, stocks, and CLI smoke paths. Shared `conftest.py` fixtures are still TODO — see comments in `test/conftest.py`.
 
 Contributions, ideas, and feedback are welcome. This is a personal project — I'm learning as I go — focused on clean structure, good terminal UX, and reliable data aggregation.
 
