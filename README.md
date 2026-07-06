@@ -64,12 +64,12 @@ flowchart LR
     CLI --> Factories --> Providers --> HttpApi
 ```
 
-| Piece | Location | Notes |
-|-------|----------|-------|
+|      Piece      | Location | Notes |
+|-----------------|----------|-------|
 | **Shared HTTP** | `client/http_api/` | `HttpApiClient.make_request()` replaces per-client `_make_request` |
-| **Providers** | `client/<domain>/providers/<name>/` | One directory per provider (Open-Meteo, Noozra, Alpaca) |
-| **Errors** | `errors.py` per domain/provider | Preliminary typed exceptions — more expected later |
-| **Secrets** | `cli/main.py` | `load_dotenv()` at app entry, not in client constructors |
+| **Providers**   | `client/<domain>/providers/<name>/` | One directory per provider (Open-Meteo, Noozra, Alpaca) |
+| **Factories**   | `client/factory.py | One factory per Client |
+|    **CLI**      | `cli/main.py   |
 
 ---
 
@@ -211,8 +211,6 @@ Parts of this codebase were built with [Grok Build](https://x.ai/cli) — in the
 ## 📄 License
 
 MIT — see [`LICENSE`](LICENSE).
-
-You may fork, modify, and reuse mydash code, including in commercial projects. If you use any part of this project, you must give credit by keeping the copyright notice and MIT license terms on the mydash code you used. Your own additions and your overall project may use any license you choose.
 
 ## 🙏 Acknowledgments
 
