@@ -67,9 +67,9 @@ flowchart LR
 |      Piece      | Location | Notes |
 |-----------------|----------|-------|
 | **Shared HTTP** | `client/http_api/` | `HttpApiClient.make_request()` replaces per-client `_make_request` |
-| **Providers**   | `client/<domain>/providers/<name>/` | One directory per provider (Open-Meteo, Noozra, Alpaca) |
-| **Factories**   | `client/factory.py | One factory per Client |
-|    **CLI**      | `cli/main.py   |
+| **Providers**   | `client/<base_client>/providers/<name>/` | One directory per provider (Open-Meteo, Noozra, Alpaca) |
+| **Factories**   | `client/<base_client>/factory.py` | One factory per Client |
+|    **CLI**      | `cli/main.py`   |
 
 ---
 
