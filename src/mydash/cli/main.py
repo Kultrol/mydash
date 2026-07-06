@@ -24,6 +24,7 @@ console = Console()
 app = typer.Typer()
 
 load_dotenv()
+
 # TODO(cli): city/category/symbols are hardcoded — explore Typer options or a shared
 # config module once services exist; unclear yet whether config lives in cli or services.
 # TODO(cli): brief() calls command functions directly — may want a shared orchestration

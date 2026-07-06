@@ -11,6 +11,10 @@ import httpx
 from mydash.client.geocoding.schemas import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.providers.open_meteo.errors import (
+    MissingCoordinatesError,
+    MissingWeatherForecastError,
+)
 from mydash.client.weather.providers.open_meteo.schemas import Parameters
 from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
 
@@ -33,9 +37,7 @@ class OpenMeteoClient(WeatherClient):
         backwardcast_length: int = 1,
     ) -> None:
         if self.coordinates is None:
-            raise MissingCoordinatesError(
-                "Coordinates must be set before fetching a weather forecast."
-            )
+            raise MissingCoordinatesError()
 
         params = Parameters(coordinates=self.coordinates)
         weather_data = HttpApiClient().make_request(
@@ -91,7 +93,5 @@ class OpenMeteoClient(WeatherClient):
 
     def get_weather_forecast(self) -> MultiDayForecast:
         if self.weather_forecast is None:
-            raise MissingWeatherForecast(
-                "Weather Forecast not found. Must fetch weather forecast by calling 'set_weather_forecast'."
-            )
+            raise MissingWeatherForecastError()
         return self.weather_forecast

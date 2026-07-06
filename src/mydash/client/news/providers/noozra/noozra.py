@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.news.base import NewsClient
+from mydash.client.news.providers.noozra.errors import MissingArticlesError
 from mydash.client.news.schemas import HeadLine, NewsHeadlines
 
 
@@ -30,8 +31,10 @@ class NoozraClient(NewsClient):
         raw_news_headlines = HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.model_dump()
         )
-        if raw_news_headlines.get("articles") is None:
-            raise MissingArticlesError
+        articles = raw_news_headlines.get("articles")
+
+        if articles is None:
+            raise MissingArticlesError(url=self.url.__str__())
 
         # ----------------------------------------------
         # TODO: Encapsulate this into a function
@@ -39,7 +42,8 @@ class NoozraClient(NewsClient):
 
         # Map each API article dict to a validated HeadLine model.
         self.news_headlines = NewsHeadlines(headlines=[])
-        for article in raw_news_headlines["articles"]:
+
+        for article in articles:
             new_headline = HeadLine(
                 headline=article.get("headline"),
                 publication=article.get("source"),
