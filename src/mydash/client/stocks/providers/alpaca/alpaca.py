@@ -8,11 +8,12 @@ import os
 from typing import Any, Dict
 
 import httpx
-from dotenv import load_dotenv
 from pydantic import BaseModel
 from rich.console import Console
 
+from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.stocks.base import StockClient
+from mydash.client.stocks.providers.alpaca.errors import HeaderValidationError
 from mydash.client.stocks.schemas import StockBar, StockBars, StockQuote, StockQuotes
 
 console = Console()
@@ -31,66 +32,61 @@ class AlpacaParams(BaseModel):
 class AlpacaHeaders(BaseModel):
     """Authentication headers for Alpaca API requests."""
 
-    api_key: str | None
-    api_secret: str | None
-    accept: str
+    api_key: str
+    api_secret: str
+    content_type: str
 
 
 class AlpacaClient(StockClient):
     """Fetch and cache latest stock quotes from Alpaca Markets."""
 
     def __init__(self):
-        self.client = httpx.Client()
         self.quotes_url = httpx.URL(
             "https://data.alpaca.markets/v2/stocks/quotes/latest"
         )
         self.bars_url = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
-        # Call load_dotenv in a different location. Not in this file.
-        # TODO(architecture): load_dotenv() in __init__ couples client construction to
-        # process env — explore centralizing env loading (factory or app bootstrap).
-        load_dotenv()
-        if (
-            os.getenv("STOCK_ALPACA_API_KEY_ID") is not None
-            and os.getenv("STOCK_ALPACA_API_SECRET_KEY") is not None
-        ):
-            self.headers = AlpacaHeaders(
-                api_key=os.getenv("STOCK_ALPACA_API_KEY_ID"),
-                api_secret=os.getenv("STOCK_ALPACA_API_SECRET_KEY"),
-                accept="application/json",
-            )
-        else:
-            console.print(
-                "Alpaca API key or secret not found. Please proivde a API key and secret to the environment variables."
-            )
-            raise ValueError
-
         self.stock_quotes = StockQuotes(quotes=[])
         self.stock_bars = StockBars(bars=[])
 
-    def _make_request(self, url: httpx.URL, params: AlpacaParams) -> Any:
-        try:
-            headers = {
-                "APCA-API-KEY-ID": self.headers.api_key,
-                "APCA-API-SECRET-KEY": self.headers.api_secret,
-                "content-type": self.headers.accept,
-            }
-            # TODO(correctness): no request timeout — can hang indefinitely on slow networks.
-            response = self.client.get(
-                url, params=params.to_query_params(), headers=headers, timeout=10
+    def _header_validation(
+        self,
+        content_type: str = "application/json",
+    ) -> AlpacaHeaders:
+        api_key = os.getenv("STOCK_ALPACA_API_KEY_ID")
+        api_secret = os.getenv("STOCK_ALPACA_API_SECRET_KEY")
+        if api_key is not None and api_secret is not None:
+            return AlpacaHeaders(
+                api_key=api_key,
+                api_secret=api_secret,
+                content_type=content_type,
             )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError as err:
-            console.log(f"Encountered an HTTPError at {err.request.url}: {err}\n")
-            console.print_exception(show_locals=True)
-            raise
+        else:
+            raise HeaderValidationError(
+                api_key_type=type(api_key),
+                api_secret_type=type(api_secret),
+                type_of_content_type=type(content_type),
+            )
 
     def set_current_stock_quotes(self) -> None:
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
-        response = self._make_request(url=self.quotes_url, params=params)
+        headers = self._header_validation()
+        response = HttpApiClient().make_request(
+            url=self.quotes_url,
+            request_method="GET",
+            parameters=params.to_query_params(),
+            headers=httpx.Headers(
+                {
+                    "APCA-API-KEY-ID": headers.api_key,
+                    "APCA-API-SECRET-KEY": headers.api_secret,
+                    "ACCEPT": headers.content_type,
+                }
+            ),
+        )
+
+        # ------------------------------------------------------
+        # TODO: Encapsulate this into a function
+        # ------------------------------------------------------
         quotes: Dict[Any, Any] = response.get("quotes", response)
-        # TODO(correctness): quotes list is appended without reset — repeated fetches
-        # accumulate stale entries.
         self.stock_quotes = StockQuotes(quotes=[])
         for ticker in params.symbols:
             self.stock_quotes.quotes.append(
@@ -108,7 +104,23 @@ class AlpacaClient(StockClient):
 
     def set_current_stock_bars(self) -> None:
         params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
-        response = self._make_request(url=self.bars_url, params=params)
+        headers = self._header_validation()
+        response = HttpApiClient().make_request(
+            url=self.bars_url,
+            request_method="GET",
+            parameters=params.to_query_params(),
+            headers=httpx.Headers(
+                {
+                    "APCA-API-KEY-ID": headers.api_key,
+                    "APCA-API-SECRET-KEY": headers.api_secret,
+                    "ACCEPT": headers.content_type,
+                }
+            ),
+        )
+
+        # ------------------------------------------------------
+        # TODO: Encapsulate this into a function
+        # ------------------------------------------------------
         bars: Dict[Any, Any] = response.get("bars", response)
         self.stock_bars = StockBars(bars=[])
         for ticker in params.symbols:

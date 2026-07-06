@@ -5,69 +5,50 @@ Requires coordinates to be set before fetching (typically from the geocoding cli
 """
 
 from datetime import datetime
-from typing import Any
 
 import httpx
-from rich.console import Console
 
 from mydash.client.geocoding.schemas import Coordinates
-
-from .base import WeatherClient
-from .schemas import DayForecast, HourForecast, MultiDayForecast
+from mydash.client.http_api.http_api import HttpApiClient
+from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.providers.open_meteo.errors import (
+    MissingCoordinatesError,
+    MissingWeatherForecastError,
+)
+from mydash.client.weather.providers.open_meteo.schemas import Parameters
+from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
 
 
 class OpenMeteoClient(WeatherClient):
     """Fetch and parse multi-day hourly forecasts from Open-Meteo."""
 
     def __init__(self):
-        self.client = httpx.Client()
         self.url = httpx.URL("https://api.open-meteo.com/v1/forecast")
-        self.timeout = 10
         self.coordinates: Coordinates | None = None
-        self.weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
-
-    def _make_request(self, params) -> Any:
-        try:
-            res = self.client.get(url=self.url, params=params, timeout=self.timeout)
-            res.raise_for_status()
-            return res.json()
-        except httpx.HTTPStatusError as err:
-            raise err
-        except httpx.HTTPError as err:
-            Console().log(f"HTTP Exception for {err.request.url} - {err}")
-            raise err
+        self.weather_forecast: MultiDayForecast | None = None
 
     def set_coordinates(self, coordinates: Coordinates) -> None:
         """Store coordinates for subsequent forecast requests."""
         self.coordinates = coordinates
 
-    def set_weather_forecast(self, forecast_length: int = 1) -> None:
+    def set_weather_forecast(
+        self,
+        forecast_length: int = 1,
+        backwardcast_length: int = 1,
+    ) -> None:
         if self.coordinates is None:
-            raise ValueError(
-                "Coordinates must be set before fetching a weather forecast."
-            )
+            raise MissingCoordinatesError()
 
-        params = {
-            "latitude": self.coordinates.latitude,
-            "longitude": self.coordinates.longitude,
-            # Hourly variables map 1:1 to HourForecast schema fields (see schemas.py).
-            "hourly": [
-                "temperature_2m",
-                "apparent_temperature",
-                "precipitation_probability",
-                "precipitation",
-                "weather_code",
-                "cloud_cover",
-                "wind_speed_10m",
-                "uv_index",
-            ],
-            "past_days": 1,
-            "forecast_days": forecast_length,
-        }
+        params = Parameters(coordinates=self.coordinates)
+        weather_data = HttpApiClient().make_request(
+            url=self.url, request_method="GET", parameters=params.to_params()
+        )
 
-        weather_data = self._make_request(params)
-
+        # ------------------------------------------------
+        # Encapsulate the below logic in its own function.
+        # ------------------------------------------------
         current_day = DayForecast(month=0, day=0, hours=[])
+
         weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
         for index in range(0, len(weather_data["hourly"]["time"])):
@@ -106,11 +87,11 @@ class OpenMeteoClient(WeatherClient):
 
         weather_forecast.days.append(current_day)
         self.weather_forecast = weather_forecast
+        # ----------------------------------------
+
         return None
 
     def get_weather_forecast(self) -> MultiDayForecast:
-        if self.coordinates is None:
-            raise ValueError(
-                "Coordinates must be set before fetching a weather forecast."
-            )
+        if self.weather_forecast is None:
+            raise MissingWeatherForecastError()
         return self.weather_forecast

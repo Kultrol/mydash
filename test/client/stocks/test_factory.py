@@ -7,8 +7,8 @@ Depends on: conftest.alpaca_env
 
 import pytest
 
-from src.mydash.client.stocks.base import StockClient
-from src.mydash.client.stocks.factory import get_stock_client
+from mydash.client.stocks.base import StockClient
+from mydash.client.stocks.factory import get_stock_client
 
 
 # --- Factory ---

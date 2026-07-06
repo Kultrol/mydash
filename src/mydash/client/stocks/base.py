@@ -4,23 +4,13 @@ Follows the same two-phase pattern as weather and news clients.
 """
 
 from abc import abstractmethod
-from typing import Any, Protocol
+from typing import Protocol
 
-import httpx
-
-from .schemas import StockBars, StockQuotes
+from mydash.client.stocks.schemas import StockBars, StockQuotes
 
 
 class StockClient(Protocol):
     """Protocol for stock quote providers."""
-
-    @abstractmethod
-    def _make_request(self, url: httpx.URL, params) -> Any:
-        """Send an authenticated HTTP request to the provider API.
-
-        :param params: Query parameters (e.g. symbol list).
-        :return: Parsed JSON response body.
-        """
 
     @abstractmethod
     def set_current_stock_quotes(self) -> None:

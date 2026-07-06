@@ -114,9 +114,9 @@ A lot remains before mydash is production-ready. Work is staged roughly in depen
 
 ### Phase 1 — Data correctness
 
-- [ ] Fix weather forecast day-boundary grouping
-- [ ] Replace-on-fetch cache semantics for news and stocks
-- [ ] HTTP timeout parity for Alpaca (match other clients)
+- [X] Fix weather forecast day-boundary grouping
+- [X] Replace-on-fetch cache semantics for news and stocks
+- [X] HTTP timeout parity for Alpaca (match other clients)
 
 ### Phase 2 — Test foundation
 

@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from src.mydash.client.weather.factory import get_weather_client
+from mydash.client.weather.factory import get_weather_client
 
 
 # --- Coordinate guards ---

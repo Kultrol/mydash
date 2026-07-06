@@ -4,8 +4,8 @@ Selects a concrete provider by name. Add new providers here as implementations
 are created (e.g. WeatherAPI, OpenWeatherMap).
 """
 
-from .base import WeatherClient
-from .open_meteo import OpenMeteoClient
+from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.providers.open_meteo.open_meteo import OpenMeteoClient
 
 
 def get_weather_client(provider: str = "open-meteo", **config) -> WeatherClient:

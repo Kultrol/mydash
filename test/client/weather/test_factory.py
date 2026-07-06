@@ -6,8 +6,8 @@ Strategy: direct instantiation checks; no HTTP mocking needed.
 
 import pytest
 
-from src.mydash.client.weather.base import WeatherClient
-from src.mydash.client.weather.factory import get_weather_client
+from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.factory import get_weather_client
 
 
 # --- Factory ---

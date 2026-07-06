@@ -10,7 +10,7 @@ class HeadLine(BaseModel):
 
     headline: str
     publication: str
-    description: str
+    description: str | None
     source_url: str
     category: str
     # Noozra returns ISO datetime strings; Pydantic coerces to datetime.datetime.

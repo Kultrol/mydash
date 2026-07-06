@@ -5,7 +5,7 @@ Downstream weather clients consume :class:`~mydash.client.geocoding.schemas.Coor
 """
 
 from abc import abstractmethod
-from typing import Any, Protocol
+from typing import Protocol
 
 import httpx
 
@@ -23,18 +23,8 @@ class GeocodingClient(Protocol):
 
     @abstractmethod
     def __init__(self) -> None:
-        self.client: httpx.Client
         self.url: httpx.URL
-        self.timeout: int
         self.coordinates: Coordinates
-
-    @abstractmethod
-    def _make_request(self, params) -> Any:
-        """Send an HTTP request to the provider API.
-
-        :param params: Query parameters dict forwarded to the provider.
-        :return: Parsed JSON response body.
-        """
 
     @abstractmethod
     def set_coordinates(self, city: str) -> None:

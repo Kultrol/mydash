@@ -4,11 +4,11 @@
 via ``set_coordinates`` before fetching a forecast.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Coordinates(BaseModel):
     """Latitude/longitude pair returned by a geocoding lookup."""
 
-    latitude: float
-    longitude: float
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-90, le=90)

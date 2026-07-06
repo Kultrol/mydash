@@ -7,8 +7,8 @@ Strategy: direct instantiation checks; no HTTP mocking needed.
 import pytest
 
 from mydash.client.geocoding.base import GeocodingClient
-from src.mydash.client.geocoding.factory import get_geocoding_client
-from src.mydash.client.geocoding.open_meteo import OpenMeteoClient
+from mydash.client.geocoding.factory import get_geocoding_client
+from mydash.client.geocoding.providers.open_meteo.open_meteo import OpenMeteoClient
 
 
 @pytest.mark.parametrize(

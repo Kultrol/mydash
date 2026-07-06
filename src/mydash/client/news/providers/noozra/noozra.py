@@ -4,13 +4,12 @@ Fetches categorized article headlines from https://noozra.com/api/articles.
 No API key required.
 """
 
-from typing import Any
-
 import httpx
-from pydantic import BaseModel, ValidationError
-from rich.console import Console
+from pydantic import BaseModel
 
+from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.news.base import NewsClient
+from mydash.client.news.providers.noozra.errors import MissingArticlesError
 from mydash.client.news.schemas import HeadLine, NewsHeadlines
 
 
@@ -20,39 +19,31 @@ class NoozraParams(BaseModel):
     category: str
 
 
-console = Console()
-
-
 class NoozraClient(NewsClient):
     """Fetch and cache news headlines from the Noozra API."""
 
     def __init__(self):
-        self.client = httpx.Client()
-        self.url = "https://noozra.com/api/articles"
-        self.timeout = 10
+        self.url = httpx.URL("https://noozra.com/api/articles")
         self.news_headlines = NewsHeadlines(headlines=[])
-
-    def _make_request(self, params: NoozraParams) -> Any:
-        try:
-            response = self.client.get(
-                self.url, params=params.model_dump(), timeout=self.timeout
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError as err:
-            console.print(f"Encountered an HTTPError at {err.request.url}: {err}\n")
-            console.print_exception(show_locals=True)
-            raise
 
     def set_news_headlines(self, category: str) -> None:
         params = NoozraParams(category=category)
-        raw_news_headlines = self._make_request(params=params)
-        if raw_news_headlines.get("articles") is None:
-            raise ValueError
+        raw_news_headlines = HttpApiClient().make_request(
+            url=self.url, request_method="GET", parameters=params.model_dump()
+        )
+        articles = raw_news_headlines.get("articles")
+
+        if articles is None:
+            raise MissingArticlesError(url=self.url.__str__())
+
+        # ----------------------------------------------
+        # TODO: Encapsulate this into a function
+        # ---------------------------------------------
 
         # Map each API article dict to a validated HeadLine model.
         self.news_headlines = NewsHeadlines(headlines=[])
-        for article in raw_news_headlines["articles"]:
+
+        for article in articles:
             new_headline = HeadLine(
                 headline=article.get("headline"),
                 publication=article.get("source"),
