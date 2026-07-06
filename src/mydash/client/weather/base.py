@@ -5,7 +5,7 @@ the provider; ``get_*`` methods return the cached result without making new requ
 """
 
 from abc import abstractmethod
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from mydash.client.geocoding.schemas import Coordinates
 from mydash.client.weather.schemas import MultiDayForecast
@@ -27,15 +27,6 @@ class WeatherClient(Protocol):
 
         :params coordinates: Coordinates of the place of interest
         """
-
-    @abstractmethod
-    def _make_request(self, params) -> Any:
-        """Send an HTTP request to the provider API.
-
-        :param params: Query parameters dict forwarded to the provider.
-        :return: Parsed JSON response body.
-        """
-        ...
 
     @abstractmethod
     def set_weather_forecast(self) -> None:
