@@ -5,7 +5,7 @@ Downstream weather clients consume :class:`~mydash.client.geocoding.schemas.Coor
 """
 
 from abc import abstractmethod
-from typing import Any, Protocol
+from typing import Protocol
 
 import httpx
 
