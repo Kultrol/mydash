@@ -8,15 +8,19 @@ import os
 from typing import Any, Dict
 
 import httpx
-from pydantic import BaseModel
-from rich.console import Console
+from pydantic import BaseModel, ValidationError
 
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.stocks.base import StockClient
-from mydash.client.stocks.providers.alpaca.errors import HeaderValidationError
+from mydash.client.stocks.providers.alpaca.errors import (
+    HeaderValidationError,
+    MissingStockBarsError,
+    MissingStockQuotesError,
+    ParameterSettingError,
+    StockBarsSettingError,
+    StockQuotesSettingError,
+)
 from mydash.client.stocks.schemas import StockBar, StockBars, StockQuote, StockQuotes
-
-console = Console()
 
 
 class AlpacaParams(BaseModel):
@@ -45,8 +49,8 @@ class AlpacaClient(StockClient):
             "https://data.alpaca.markets/v2/stocks/quotes/latest"
         )
         self.bars_url = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
-        self.stock_quotes = StockQuotes(quotes=[])
-        self.stock_bars = StockBars(bars=[])
+        self.stock_quotes: StockQuotes | None = None
+        self.stock_bars: StockBars | None = None
 
     def _header_validation(
         self,
@@ -68,7 +72,10 @@ class AlpacaClient(StockClient):
             )
 
     def set_current_stock_quotes(self) -> None:
-        params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
+        try:
+            params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
+        except ValidationError as err:
+            raise ParameterSettingError(validation_err=err)
         headers = self._header_validation()
         response = HttpApiClient().make_request(
             url=self.quotes_url,
@@ -89,21 +96,30 @@ class AlpacaClient(StockClient):
         quotes: Dict[Any, Any] = response.get("quotes", response)
         self.stock_quotes = StockQuotes(quotes=[])
         for ticker in params.symbols:
-            self.stock_quotes.quotes.append(
-                StockQuote(
+            try:
+                stock_quote = StockQuote(
                     ticker_name=ticker,
                     ask_price=quotes[ticker]["ap"],
                     bid_price=quotes[ticker]["bp"],
                     time=quotes[ticker]["t"],
                 )
-            )
+            except ValidationError as err:
+                raise StockQuotesSettingError(err)
+
+            self.stock_quotes.quotes.append(stock_quote)
         return None
 
     def get_current_stock_quotes(self) -> StockQuotes:
-        return self.stock_quotes
+        if self.stock_quotes is not None:
+            return self.stock_quotes
+        else:
+            raise MissingStockQuotesError()
 
     def set_current_stock_bars(self) -> None:
-        params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
+        try:
+            params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
+        except ValidationError as err:
+            raise ParameterSettingError(validation_err=err)
         headers = self._header_validation()
         response = HttpApiClient().make_request(
             url=self.bars_url,
@@ -124,15 +140,20 @@ class AlpacaClient(StockClient):
         bars: Dict[Any, Any] = response.get("bars", response)
         self.stock_bars = StockBars(bars=[])
         for ticker in params.symbols:
-            self.stock_bars.bars.append(
-                StockBar(
+            try:
+                stock_bar: StockBar = StockBar(
                     ticker_name=ticker,
                     open=bars[ticker]["o"],
                     close=bars[ticker]["c"],
                     time=bars[ticker]["t"],
                 )
-            )
+            except ValidationError as err:
+                raise StockBarsSettingError(err)
+            self.stock_bars.bars.append(stock_bar)
         return None
 
     def get_current_stock_bars(self):
-        return self.stock_bars
+        if self.stock_bars is not None:
+            return self.stock_bars
+        else:
+            raise MissingStockBarsError()
