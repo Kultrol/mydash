@@ -7,13 +7,17 @@ Requires coordinates to be set before fetching (typically from the geocoding cli
 from datetime import datetime
 
 import httpx
+from pydantic import ValidationError
 
 from mydash.client.geocoding.schemas import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.weather.base import WeatherClient
 from mydash.client.weather.providers.open_meteo.errors import (
+    DayForecastSettingError,
+    HourForecastSettingError,
     MissingCoordinatesError,
     MissingWeatherForecastError,
+    ParameterSettingError,
 )
 from mydash.client.weather.providers.open_meteo.schemas import Parameters
 from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
@@ -39,19 +43,24 @@ class OpenMeteoClient(WeatherClient):
         if self.coordinates is None:
             raise MissingCoordinatesError()
 
-        params = Parameters(coordinates=self.coordinates)
+        try:
+            params = Parameters(coordinates=self.coordinates)
+        except ValidationError as err:
+            raise ParameterSettingError(validation_err=err)
+
         weather_data = HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.to_params()
         )
 
         # ------------------------------------------------
-        # Encapsulate the below logic in its own function.
+        # TODO: Encapsulate the below logic in its own function.
         # ------------------------------------------------
-        current_day = DayForecast(month=0, day=0, hours=[])
 
+        current_day = DayForecast(month=0, day=0, hours=[])
         weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
         for index in range(0, len(weather_data["hourly"]["time"])):
+            # TODO: These variable assignments need to be re-done.
             hourly_data = weather_data["hourly"]
             time: datetime = datetime.strptime(
                 hourly_data["time"][index], "%Y-%m-%dT%H:%M"
@@ -69,10 +78,14 @@ class OpenMeteoClient(WeatherClient):
             if (current_day.day, current_day.month) != (time.day, time.month):
                 if index != 0:
                     weather_forecast.days.append(current_day)
-                current_day = DayForecast(month=time.month, day=time.day, hours=[])
 
-            current_day.hours.append(
-                HourForecast(
+                try:
+                    current_day = DayForecast(month=time.month, day=time.day, hours=[])
+                except ValidationError as err:
+                    raise DayForecastSettingError(err)
+
+            try:
+                hour_forecast = HourForecast(
                     hour=time.hour,
                     temperature=temperature,
                     feels_like_temperature=feels_like_temperature,
@@ -83,7 +96,10 @@ class OpenMeteoClient(WeatherClient):
                     weather_code=weather_code,
                     uv_index=uv_index,
                 )
-            )
+            except ValidationError as err:
+                raise HourForecastSettingError(err)
+
+            current_day.hours.append(hour_forecast)
 
         weather_forecast.days.append(current_day)
         self.weather_forecast = weather_forecast
