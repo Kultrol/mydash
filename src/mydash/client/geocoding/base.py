@@ -24,7 +24,7 @@ class GeocodingClient(Protocol):
     @abstractmethod
     def __init__(self) -> None:
         self.url: httpx.URL
-        self.coordinates: Coordinates
+        self.coordinates: Coordinates | None
 
     @abstractmethod
     def set_coordinates(self, city: str) -> None:
