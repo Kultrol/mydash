@@ -1,6 +1,6 @@
 class HttpApiError(Exception):
     def __init__(self, general_err):
-        super().__init__(f"Error occured: {general_err}")
+        super().__init__(general_err)
 
 
 class RequestError(HttpApiError):

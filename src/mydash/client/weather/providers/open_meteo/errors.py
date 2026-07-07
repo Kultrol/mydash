@@ -1,4 +1,4 @@
-from mydash.client.weather.errors import WeatherClientError
+from mydash.client.weather.base_errors import WeatherClientError
 
 
 class OpenMeteoWeatherError(WeatherClientError): ...

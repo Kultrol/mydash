@@ -5,6 +5,7 @@ are created (e.g. WeatherAPI, OpenWeatherMap).
 """
 
 from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.base_errors import WeatherFactoryError
 from mydash.client.weather.providers.open_meteo.open_meteo import OpenMeteoClient
 
 
@@ -18,4 +19,4 @@ def get_weather_client(provider: str = "open-meteo", **config) -> WeatherClient:
     if provider == "open-meteo" or provider == "" or provider is None:
         return OpenMeteoClient()
     else:
-        raise ValueError(f"Unknown weather provider: {provider}")
+        raise WeatherFactoryError(provider=provider)

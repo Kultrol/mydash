@@ -5,6 +5,7 @@ future settings such as API keys, default categories, or article limits.
 """
 
 from mydash.client.news.base import NewsClient
+from mydash.client.news.base_errors import NewsFactoryError
 from mydash.client.news.providers.noozra.noozra import NoozraClient
 
 
@@ -18,4 +19,4 @@ def get_news_client(provider: str = "noozra", **config) -> NewsClient:
     if provider == "noozra":
         return NoozraClient()
     else:
-        raise ValueError("Unknown provider. Please choose a valid provider.")
+        raise NewsFactoryError(provider=provider)

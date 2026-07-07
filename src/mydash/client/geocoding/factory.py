@@ -5,6 +5,7 @@ reserved for future per-provider settings (API keys, timeouts, base URLs).
 """
 
 from mydash.client.geocoding.base import GeocodingClient
+from mydash.client.geocoding.base_errors import GeocodingFactoryError
 from mydash.client.geocoding.providers.open_meteo.open_meteo import OpenMeteoClient
 
 
@@ -18,4 +19,4 @@ def get_geocoding_client(provider: str = "open-meteo", **config) -> GeocodingCli
     if provider == "open-meteo":
         return OpenMeteoClient()
     else:
-        raise ValueError(f"Unknown geocoding provider: {provider}")
+        raise GeocodingFactoryError(provider=provider)
