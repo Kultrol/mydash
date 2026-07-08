@@ -7,6 +7,7 @@ Strategy: direct instantiation checks; no HTTP mocking needed.
 import pytest
 
 from mydash.client.geocoding.base import GeocodingClient
+from mydash.client.geocoding.base_errors import GeocodingFactoryError
 from mydash.client.geocoding.factory import get_geocoding_client
 from mydash.client.geocoding.providers.open_meteo.open_meteo import OpenMeteoClient
 
@@ -23,13 +24,13 @@ def test_get_gecoding_client_valid_provider(mock_provider, expected_result) -> N
 @pytest.mark.parametrize(
     argnames="mock_provider, expected_result",
     argvalues=[
-        ("", ValueError),
-        (None, ValueError),
-        (2102, ValueError),
-        ("open_meteo", ValueError),
-        ("bad", ValueError),
+        ("", GeocodingFactoryError),
+        (None, GeocodingFactoryError),
+        (2102, GeocodingFactoryError),
+        ("open_meteo", GeocodingFactoryError),
+        ("bad", GeocodingFactoryError),
     ],
 )
 def test_get_gecoding_client_invalid_provider(mock_provider, expected_result) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(GeocodingFactoryError):
         get_geocoding_client(mock_provider)
