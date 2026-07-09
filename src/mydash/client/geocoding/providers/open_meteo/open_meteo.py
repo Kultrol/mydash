@@ -4,6 +4,8 @@ Free, keyless geocoding via https://geocoding-api.open-meteo.com/v1/search.
 Results are ranked by relevance; this client takes the first (closest) match.
 """
 
+from typing import Any
+
 import httpx
 from pydantic import BaseModel, ValidationError
 
@@ -12,6 +14,7 @@ from mydash.client.geocoding.providers.open_meteo.errors import (
     CoordinatesSettingError,
     OpenMeteoCityNotFoundError,
     OpenMeteoCoordinatesNotFoundError,
+    OpenMeteoResponseError,
     ParameterSettingError,
 )
 from mydash.client.geocoding.schemas import Coordinates
@@ -26,6 +29,12 @@ class OpenMeteoParams(BaseModel):
     name: str = ""
 
 
+class OpenMeteoResponse(BaseModel):
+    """Validated response for the Open-Meteo Geocoding search endpoint"""
+
+    results: list[dict[str, Any]]
+
+
 class OpenMeteoClient(GeocodingClient):
     """Resolve city names to coordinates using the Open-Meteo Geocoding API."""
 
@@ -36,6 +45,7 @@ class OpenMeteoClient(GeocodingClient):
     def set_coordinates(self, city: str) -> None:
         """Resolve and cache coordinates for *city* on this client instance."""
 
+        # INFO - Stage 1: City Input Validation
         # Validating Parameter Values
         try:
             params = OpenMeteoParams(
@@ -45,19 +55,34 @@ class OpenMeteoClient(GeocodingClient):
             raise ParameterSettingError(err)
 
         # Creating an HttpApiClient and making a request to the api.
-        coordinate_data = HttpApiClient().make_request(
+        api_response = HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.model_dump()
         )
 
-        # Handles case in which the response does not return expected results.
-        if coordinate_data.get("results") is None:
-            raise OpenMeteoCityNotFoundError(params.name)
+        # INFO - Stage 2: Response Checking
+        raw_results = api_response.get("results", None)
 
-        # Validating Coordinates
+        if not raw_results:
+            raise OpenMeteoCityNotFoundError(params.name, api_response)
+
+        # Tries to validate that raw_results is of type list[Dict[str,Any]]
         try:
-            self.coordinates = Coordinates(
-                latitude=coordinate_data["results"][0]["latitude"],
-                longitude=coordinate_data["results"][0]["longitude"],
+            response = OpenMeteoResponse(results=raw_results)
+        except ValidationError as err:
+            raise OpenMeteoResponseError(
+                message="Received malformed data from Open-Meteo API",
+                details=err.errors(),
+            )
+
+        coordinate_data = response.results[0]
+
+        # INFO - Stage 3: Setting Coordinate Validation
+        try:
+            self.coordinates = Coordinates.model_validate(
+                {
+                    "latitude": coordinate_data.get("latitude"),
+                    "longitude": coordinate_data.get("longitude"),
+                }
             )
         except ValidationError as err:
             raise CoordinatesSettingError(err)

@@ -1,21 +1,38 @@
+from typing import Any
+
 from pydantic import ValidationError
+
 
 from mydash.client.geocoding.base_errors import (
     CityNotFoundError,
     CoordinatesNotFoundError,
     GeocodingClientError,
+    ResponseError
 )
 
 
 class OpenMeteoClientError(GeocodingClientError): ...
 
 
+class OpenMeteoResponseError(OpenMeteoClientError, ResponseError):
+    """The API returned a response, but the data was invalid or unexpected.
+
+    This covers:
+    - Missing required fields
+    - Wrong data types
+    - Unexpected JSON structure
+    """
+    def __init__(self, message: str, details: Any = None):
+        super().__init__(message)
+        self.details = details
+
+
 class OpenMeteoCityNotFoundError(OpenMeteoClientError, CityNotFoundError):
-    def __init__(self, city):
-        super().__init__(
-            f"City - '{city}', could not be found. "
-            "Please try again and provide a valid city name."
-        )
+    """The search succeeded, but no matching city/location was found."""
+    def __init__(self, query: str, details: Any = None):
+        super().__init__(f"No results found for '{query}'")
+        self.query = query
+        self.details = details
 
 
 class OpenMeteoCoordinatesNotFoundError(OpenMeteoClientError, CoordinatesNotFoundError):
@@ -23,7 +40,6 @@ class OpenMeteoCoordinatesNotFoundError(OpenMeteoClientError, CoordinatesNotFoun
         super().__init__(
             f"Coordinates not found. Current coordinate:  type:{type(coordinates)!r}, value:{coordinates!r}"
         )
-
 
 class CoordinatesSettingError(OpenMeteoClientError):
     def __init__(self, validation_err: ValidationError):
