@@ -39,16 +39,20 @@ class OpenMeteoClient(WeatherClient):
         else:
             raise CoordinateSettingError(coordinates)
 
+    def get_coordinates(self) -> Coordinates:
+        if self.coordinates is not None:
+            return self.coordinates
+        else:
+            raise MissingCoordinatesError()
+
     def set_weather_forecast(
         self,
         forecast_length: int = 1,
         backwardcast_length: int = 1,
     ) -> None:
-        if self.coordinates is None:
-            raise MissingCoordinatesError()
 
         try:
-            params = Parameters(coordinates=self.coordinates)
+            params = Parameters(coordinates=self.get_coordinates())
         except ValidationError as err:
             raise ParameterSettingError(validation_err=err)
 
