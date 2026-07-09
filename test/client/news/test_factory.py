@@ -3,8 +3,9 @@
 import pytest
 
 from mydash.client.news.base import NewsClient
+from mydash.client.news.base_errors import NewsFactoryError
 from mydash.client.news.factory import get_news_client
-from mydash.client.news.providers.noozra import NoozraClient
+from mydash.client.news.providers.noozra.noozra import NoozraClient
 
 
 @pytest.mark.parametrize(
@@ -17,15 +18,15 @@ def test_get_noozra_client_valid_provider(mock_provider, expected_result) -> Non
 
 
 @pytest.mark.parametrize(
-    argnames="mock_provider, expected_result",
+    argnames="mock_provider, expected_error",
     argvalues=[
-        ("", ValueError),
-        (None, ValueError),
-        (2102, ValueError),
-        ("nooz", ValueError),
-        ("bad", ValueError),
+        ("", NewsFactoryError),
+        (None, NewsFactoryError),
+        (2102, NewsFactoryError),
+        ("nooz", NewsFactoryError),
+        ("bad", NewsFactoryError),
     ],
 )
-def test_get_news_client_invalid_provider(mock_provider, expected_result) -> None:
-    with pytest.raises(ValueError):
+def test_get_news_client_invalid_provider(mock_provider, expected_error) -> None:
+    with pytest.raises(expected_error):
         get_news_client(mock_provider)
