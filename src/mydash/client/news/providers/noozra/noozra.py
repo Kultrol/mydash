@@ -32,6 +32,7 @@ class NoozraClient(NewsClient):
         self.news_headlines: NewsHeadlines | None = None
 
     def set_news_headlines(self, category: str) -> None:
+        # NOTE Stage 1: Validation of parameters
         try:
             params = NoozraParams(category=category)
         except ValidationError as err:
@@ -41,8 +42,10 @@ class NoozraClient(NewsClient):
             url=self.url, request_method="GET", parameters=params.model_dump()
         )
 
-        articles = raw_news_headlines.get("articles")
-        if articles is None:
+        # NOTE Stage 2 - Response Checking
+        articles = raw_news_headlines.get("articles", None)
+
+        if not articles:
             raise MissingArticlesError(url=self.url.__str__())
 
         # ----------------------------------------------
@@ -52,6 +55,7 @@ class NoozraClient(NewsClient):
         # Map each API article dict to a validated HeadLine model.
         self.news_headlines = NewsHeadlines(headlines=[])
 
+        # NOTE Stage 3 - Headline creation and Headlines setting
         for article in articles:
             try:
                 new_headline = HeadLine(
