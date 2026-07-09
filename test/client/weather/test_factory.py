@@ -7,16 +7,15 @@ Strategy: direct instantiation checks; no HTTP mocking needed.
 import pytest
 
 from mydash.client.weather.base import WeatherClient
+from mydash.client.weather.base_errors import WeatherFactoryError
 from mydash.client.weather.factory import get_weather_client
 
 
-# --- Factory ---
+# Test Case: Valid Provider -> Returns client instance
 @pytest.mark.parametrize(
     argnames="mock_provider, expected_provider",
     argvalues=[
-        (None, "OpenMeteoClient"),
         ("open-meteo", "OpenMeteoClient"),
-        ("", "OpenMeteoClient"),
     ],
 )
 def test_get_weather_client_valid_provider_return_weather_client_instance(
@@ -26,16 +25,17 @@ def test_get_weather_client_valid_provider_return_weather_client_instance(
     assert weather_client.__class__.__name__ == expected_provider
 
 
-# TODO(testing): unknown provider raises ValueError — parametrize invalid names
+# Test Case: Invalid Provider -> Raises WeatherFactoryError
 @pytest.mark.parametrize(
     argnames="mock_provider, expected_error",
     argvalues=[
-        (2, ValueError),
-        ("hoopla", ValueError),
-        ({}, ValueError),
+        (2, WeatherFactoryError),
+        ("hoopla", WeatherFactoryError),
+        ({}, WeatherFactoryError),
+        (None, WeatherFactoryError),
     ],
 )
-def test_get_weather_client_invalid_provider_raise_value_error(
+def test_get_weather_client_invalid_provider_raise_weather_factory_error(
     mock_provider, expected_error
 ):
     with pytest.raises(expected_error) as err:

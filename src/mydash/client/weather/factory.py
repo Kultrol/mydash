@@ -16,7 +16,7 @@ def get_weather_client(provider: str = "open-meteo", **config) -> WeatherClient:
     :param config: Reserved for future provider-specific configuration.
     :raises ValueError: If *provider* is not recognized.
     """
-    if provider == "open-meteo" or provider == "" or provider is None:
+    if provider == "open-meteo":
         return OpenMeteoClient()
     else:
         raise WeatherFactoryError(provider=provider)
