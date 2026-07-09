@@ -1,8 +1,4 @@
-"""Tests for mydash.client.geocoding.factory.
-
-Target: get_geocoding_client(provider, **config)
-Strategy: direct instantiation checks; no HTTP mocking needed.
-"""
+"""Tests for mydash.client.geocoding.factory."""
 
 import pytest
 

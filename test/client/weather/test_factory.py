@@ -1,8 +1,4 @@
-"""Tests for mydash.client.weather.factory.
-
-Target: get_weather_client(provider, **config)
-Strategy: direct instantiation checks; no HTTP mocking needed.
-"""
+"""Tests for mydash.client.weather.factory."""
 
 import pytest
 

@@ -1,10 +1,4 @@
-"""Tests for mydash.client.geocoding.open_meteo.
-
-Target: OpenMeteoClient (stateful API)
-Usage pattern: set_coordinates(city) fetches and caches; get_coordinates() reads cache.
-Strategy: mock client.client.get or patch _make_request; use mock_urls fixture.
-Depends on: conftest.mock_urls, conftest.sample_geocoding_response
-"""
+"""Tests for mydash.client.geocoding.open_meteo."""
 
 from unittest.mock import MagicMock
 

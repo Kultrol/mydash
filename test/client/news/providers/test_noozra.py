@@ -1,11 +1,4 @@
-"""Tests for mydash.client.news.noozra.
-
-Target: NoozraClient
-Usage pattern: set_news_headlines(category=...) then get_news_headlines()
-Strategy: patch _make_request or mock client.client.get; use mock_urls fixture
-Depends on: conftest.mock_urls, conftest.sample_noozra_articles
-
-"""
+"""Tests for mydash.client.news.noozra."""
 
 from unittest.mock import MagicMock
 
