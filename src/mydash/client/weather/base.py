@@ -22,6 +22,10 @@ class WeatherClient(Protocol):
     """
 
     @abstractmethod
+    def __init__(self):
+        self.coordinates: Coordinates | None
+
+    @abstractmethod
     def set_coordinates(self, coordinates: Coordinates) -> None:
         """Set coordinates provided to the provider API for the weather client
 

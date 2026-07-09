@@ -6,6 +6,13 @@ from mydash.client.weather.base_errors import WeatherClientError
 class OpenMeteoWeatherError(WeatherClientError): ...
 
 
+class CoordinateSettingError(OpenMeteoWeatherError):
+    def __init__(self, invalid_input):
+        super().__init__(
+            f"Invalid input provided - {type(invalid_input)}, could not set coordinates. Input should be of type - Coordinates."
+        )
+
+
 class ParameterSettingError(OpenMeteoWeatherError):
     def __init__(self, validation_err: ValidationError):
         super().__init__(

@@ -13,6 +13,7 @@ from mydash.client.geocoding.schemas import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.weather.base import WeatherClient
 from mydash.client.weather.providers.open_meteo.errors import (
+    CoordinateSettingError,
     DayForecastSettingError,
     HourForecastSettingError,
     MissingCoordinatesError,
@@ -33,7 +34,10 @@ class OpenMeteoClient(WeatherClient):
 
     def set_coordinates(self, coordinates: Coordinates) -> None:
         """Store coordinates for subsequent forecast requests."""
-        self.coordinates = coordinates
+        if type(coordinates) is Coordinates:
+            self.coordinates = coordinates
+        else:
+            raise CoordinateSettingError(coordinates)
 
     def set_weather_forecast(
         self,
