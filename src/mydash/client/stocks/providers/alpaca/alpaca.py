@@ -77,8 +77,8 @@ class AlpacaClient(StockClient):
         except ValidationError as err:
             raise ParameterSettingError(validation_err=err)
 
-    def set_current_stock_quotes(self) -> None:
-        params = self._parameter_validation(symbols=["SPY, AAPL, MSFT"])
+    def set_current_stock_quotes(self, symbols: list[str]) -> None:
+        params = self._parameter_validation(symbols=symbols)
         headers = self._header_validation()
         response = HttpApiClient().make_request(
             url=self.quotes_url,
