@@ -19,6 +19,7 @@ from mydash.client.weather.providers.open_meteo.errors import (
     MissingCoordinatesError,
     MissingWeatherForecastError,
     ParameterSettingError,
+    ResponseError,
 )
 from mydash.client.weather.providers.open_meteo.schemas import Parameters
 from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
@@ -45,20 +46,43 @@ class OpenMeteoClient(WeatherClient):
         else:
             raise MissingCoordinatesError()
 
+    def _validate_weather_forecast_params(
+        self, coordinates: Coordinates, forecast_length: int, backwardcast_length: int
+    ) -> Parameters:
+        try:
+            return Parameters(
+                coordinates=coordinates,
+                forecast_days=forecast_length,
+                past_days=backwardcast_length,
+            )
+        except ValidationError as err:
+            raise ParameterSettingError(validation_err=err)
+
     def set_weather_forecast(
         self,
         forecast_length: int = 1,
         backwardcast_length: int = 1,
     ) -> None:
 
-        try:
-            params = Parameters(coordinates=self.get_coordinates())
-        except ValidationError as err:
-            raise ParameterSettingError(validation_err=err)
+        params = self._validate_weather_forecast_params(
+            coordinates=self.get_coordinates(),
+            forecast_length=forecast_length,
+            backwardcast_length=backwardcast_length,
+        )
 
         weather_data = HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.to_params()
         )
+
+        if not weather_data.get("hourly", None):
+            raise ResponseError(query=params, api_response=weather_data)
+        else:
+            hourly_data = weather_data["hourly"]
+
+        try:
+            hourly_time = hourly_data["time"]
+        except KeyError as err:
+            raise ResponseError(query=params, api_response=hourly_data, error=err)
 
         # ------------------------------------------------
         # TODO: Encapsulate the below logic in its own function.
@@ -67,20 +91,21 @@ class OpenMeteoClient(WeatherClient):
         current_day = DayForecast(month=0, day=0, hours=[])
         weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
-        for index in range(0, len(weather_data["hourly"]["time"])):
-            # TODO: These variable assignments need to be re-done.
-            hourly_data = weather_data["hourly"]
-            time: datetime = datetime.strptime(
-                hourly_data["time"][index], "%Y-%m-%dT%H:%M"
-            )
-            temperature = hourly_data["temperature_2m"][index]
-            feels_like_temperature: float = hourly_data["apparent_temperature"][index]
-            cloud_cover: int = hourly_data["cloud_cover"][index]
-            wind_speed: float = hourly_data["wind_speed_10m"][index]
-            chance_of_rain: int = hourly_data["precipitation_probability"][index]
-            amount_of_rain: float = hourly_data["precipitation"][index]
-            weather_code: int = hourly_data["weather_code"][index]
-            uv_index: float = hourly_data["uv_index"][index]
+        for index in range(0, len(hourly_time)):
+            try:
+                time: datetime = datetime.strptime(hourly_time[index], "%Y-%m-%dT%H:%M")
+                temperature = hourly_data["temperature_2m"][index]
+                feels_like_temperature: float = hourly_data["apparent_temperature"][
+                    index
+                ]
+                cloud_cover: int = hourly_data["cloud_cover"][index]
+                wind_speed: float = hourly_data["wind_speed_10m"][index]
+                chance_of_rain: int = hourly_data["precipitation_probability"][index]
+                amount_of_rain: float = hourly_data["precipitation"][index]
+                weather_code: int = hourly_data["weather_code"][index]
+                uv_index: float = hourly_data["uv_index"][index]
+            except KeyError as err:
+                raise ResponseError(query=params, api_response=hourly_data, error=err)
 
             # When the calendar day changes, finalize the previous day and start a new one.
             if (current_day.day, current_day.month) != (time.day, time.month):
