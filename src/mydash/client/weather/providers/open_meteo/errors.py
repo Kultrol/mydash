@@ -46,3 +46,11 @@ class DayForecastSettingError(OpenMeteoWeatherError):
         super().__init__(
             f"Failure to set stock bars. Error occured: {validation_err.errors}"
         )
+
+
+class ResponseError(OpenMeteoWeatherError):
+    def __init__(self, query, api_response, error: None | KeyError = None):
+        if error is not None:
+            super().__init__(
+                f"Response error occurred. \n Parameters provided: {query} \n API Response: {api_response} \n\n Error: {error}"
+            )
