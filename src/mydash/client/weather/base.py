@@ -37,7 +37,9 @@ class WeatherClient(Protocol):
         """Get coordinates from the weather client"""
 
     @abstractmethod
-    def set_weather_forecast(self) -> None:
+    def set_weather_forecast(
+        self, forecast_length: int, backwardcast_length: int
+    ) -> None:
         """Fetch and cache an hourly forecast for the configured number of days.
 
         :param forecast_length: Number of forecast days to request from the provider.
