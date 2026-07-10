@@ -36,7 +36,7 @@ def test_get_stock_client_valid_provider_return_stock_client_instance(
         ({}, StockFactoryError),
     ],
 )
-def test_get_stock_client_invalid_provider_raise_value_error(
+def test_get_stock_client_invalid_provider_raise_stock_factory_error(
     mock_provider, expected_error
 ):
     with pytest.raises(expected_error) as err:
