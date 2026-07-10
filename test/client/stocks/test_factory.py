@@ -8,6 +8,7 @@ Depends on: conftest.alpaca_env
 import pytest
 
 from mydash.client.stocks.base import StockClient
+from mydash.client.stocks.base_errors import StockFactoryError
 from mydash.client.stocks.factory import get_stock_client
 
 
@@ -27,13 +28,12 @@ def test_get_stock_client_valid_provider_return_stock_client_instance(
     assert stock_client.__class__.__name__ == expected_provider
 
 
-# TODO(testing): unknown provider raises ValueError — parametrize invalid names
 @pytest.mark.parametrize(
     argnames="mock_provider, expected_error",
     argvalues=[
-        (2, ValueError),
-        ("hoopla", ValueError),
-        ({}, ValueError),
+        (2, StockFactoryError),
+        ("hoopla", StockFactoryError),
+        ({}, StockFactoryError),
     ],
 )
 def test_get_stock_client_invalid_provider_raise_value_error(
