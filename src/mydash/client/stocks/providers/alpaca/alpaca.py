@@ -71,11 +71,14 @@ class AlpacaClient(StockClient):
                 type_of_content_type=type(content_type),
             )
 
-    def set_current_stock_quotes(self) -> None:
+    def _parameter_validation(self, symbols: list[str]) -> AlpacaParams:
         try:
-            params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
+            return AlpacaParams(symbols=symbols)
         except ValidationError as err:
             raise ParameterSettingError(validation_err=err)
+
+    def set_current_stock_quotes(self) -> None:
+        params = self._parameter_validation(symbols=["SPY, AAPL, MSFT"])
         headers = self._header_validation()
         response = HttpApiClient().make_request(
             url=self.quotes_url,
@@ -116,10 +119,7 @@ class AlpacaClient(StockClient):
             raise MissingStockQuotesError()
 
     def set_current_stock_bars(self) -> None:
-        try:
-            params = AlpacaParams(symbols=["SPY", "AAPL", "MSFT"])
-        except ValidationError as err:
-            raise ParameterSettingError(validation_err=err)
+        params = self._parameter_validation(symbols=["SPY, AAPL, MSFT"])
         headers = self._header_validation()
         response = HttpApiClient().make_request(
             url=self.bars_url,
