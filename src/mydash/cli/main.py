@@ -42,16 +42,16 @@ def weather_watch():
 
     weather_client = get_weather_client()
     weather_client.set_coordinates(coordinates)
-    weather_client.set_weather_forecast()
+    weather_client.set_weather_forecast(forecast_length=1, backwardcast_length=1)
     console.print(weather_client.get_weather_forecast())
 
 
 @app.command("stocks")
 def stock_watch():
     stock_client = get_stock_client()
-    stock_client.set_current_stock_quotes()
+    stock_client.set_current_stock_quotes(symbols=["SPY", "AAPL", "MSFT"])
     stock_quotes = stock_client.get_current_stock_quotes()
-    stock_client.set_current_stock_bars()
+    stock_client.set_current_stock_bars(symbols=["SPY", "AAPL", "MSFT"])
     stock_bars = stock_client.get_current_stock_bars()
     console.print(stock_quotes)
     console.print(stock_bars)

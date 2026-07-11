@@ -17,6 +17,7 @@ from mydash.client.stocks.providers.alpaca.errors import (
     MissingStockBarsError,
     MissingStockQuotesError,
     ParameterSettingError,
+    ResponseError,
     StockBarsSettingError,
     StockQuotesSettingError,
 )
@@ -93,18 +94,34 @@ class AlpacaClient(StockClient):
             ),
         )
 
+        if not response.get("quotes", None):
+            raise ResponseError(query=params, api_response=response)
+        else:
+            quotes: Dict[str, Any] = response["quotes"]
+
         # ------------------------------------------------------
         # TODO: Encapsulate this into a function
         # ------------------------------------------------------
-        quotes: Dict[Any, Any] = response.get("quotes", response)
         self.stock_quotes = StockQuotes(quotes=[])
         for ticker in params.symbols:
+            if not quotes.get(ticker, None):
+                raise ResponseError(query=params, api_response=response)
+            else:
+                ticker_quote: Dict[str, Any] = quotes[ticker]
+
+            try:
+                ticker_ask_price = ticker_quote["ap"]
+                ticker_bid_price = ticker_quote["bp"]
+                ticker_time = ticker_quote["t"]
+            except KeyError as err:
+                raise ResponseError(query=params, api_response=response, error=err)
+
             try:
                 stock_quote = StockQuote(
                     ticker_name=ticker,
-                    ask_price=quotes[ticker]["ap"],
-                    bid_price=quotes[ticker]["bp"],
-                    time=quotes[ticker]["t"],
+                    ask_price=ticker_ask_price,
+                    bid_price=ticker_bid_price,
+                    time=ticker_time,
                 )
             except ValidationError as err:
                 raise StockQuotesSettingError(err)
@@ -118,8 +135,8 @@ class AlpacaClient(StockClient):
         else:
             raise MissingStockQuotesError()
 
-    def set_current_stock_bars(self) -> None:
-        params = self._parameter_validation(symbols=["SPY, AAPL, MSFT"])
+    def set_current_stock_bars(self, symbols: list[str]) -> None:
+        params = self._parameter_validation(symbols=symbols)
         headers = self._header_validation()
         response = HttpApiClient().make_request(
             url=self.bars_url,
