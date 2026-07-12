@@ -54,3 +54,7 @@ class ResponseError(AlpacaClientErrors):
             super().__init__(
                 f"Response error occurred. \n Parameters provided: {query} \n API Response: {api_response} \n\n Error: {error}"
             )
+        else:
+            super().__init__(
+                f"Response error occurred. \n Parameters provided: {query} \n API Response: {api_response}"
+            )
