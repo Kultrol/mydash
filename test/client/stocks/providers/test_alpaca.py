@@ -9,13 +9,14 @@ from mydash.client.stocks.base import StockClient
 from mydash.client.stocks.factory import get_stock_client
 from mydash.client.stocks.providers.alpaca.errors import (
     HeaderValidationError,
+    MissingStockBarsError,
     MissingStockQuotesError,
     ParameterSettingError,
     ResponseError,
     StockBarsSettingError,
     StockQuotesSettingError,
 )
-from mydash.client.stocks.schemas import StockQuotes
+from mydash.client.stocks.schemas import StockBars, StockQuotes
 
 # ==============================================
 # ***** Testing 'set_current_stock_bars' *****
@@ -501,6 +502,78 @@ def test_set_current_stock_bars_validation_failure_raise_stock_bars_setting_erro
     with pytest.raises(expected_error) as err:
         stock_client.set_current_stock_bars(symbols=mock_symbols)
     assert isinstance(err.value, expected_error)
+
+
+
+
+# ==============================================
+# ***** Testing 'get_current_stock_bars' *****
+# ==============================================
+
+
+# Test case: self.stock_bars is None -> raises MissingStockBarsError
+def test_get_current_stock_bars_missing_stock_bars_raise_missing_stock_bars_error():
+    stock_client = get_stock_client()
+
+    with pytest.raises(MissingStockBarsError) as err:
+        stock_client.get_current_stock_bars()
+    assert isinstance(err.value, MissingStockBarsError)
+
+
+# Test case: bars properly set -> returns StockBars
+@pytest.mark.parametrize(
+    argnames="mock_symbols, mock_api_key, mock_api_key_values, mock_api_secret, mock_api_secret_value, mock_api_response",
+    argvalues=[
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+        )
+    ],
+)
+def test_get_current_stock_bars_found_stock_bars_return_stock_bars(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_symbols,
+    mock_api_key,
+    mock_api_key_values,
+    mock_api_secret,
+    mock_api_secret_value,
+    mock_api_response,
+):
+    monkeypatch.setenv(name=mock_api_key, value=mock_api_key_values)
+    monkeypatch.setenv(name=mock_api_secret, value=mock_api_secret_value)
+
+    stock_client = get_stock_client("alpaca")
+
+    mock_response = MagicMock(return_value=mock_api_response)
+    monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
+
+    stock_client.set_current_stock_bars(symbols=mock_symbols)
+
+    result_current_bars = stock_client.get_current_stock_bars()
+
+    assert isinstance(result_current_bars, StockBars)
 
 
 # ==============================================
