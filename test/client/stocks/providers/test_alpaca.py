@@ -12,6 +12,7 @@ from mydash.client.stocks.providers.alpaca.errors import (
     MissingStockQuotesError,
     ParameterSettingError,
     ResponseError,
+    StockBarsSettingError,
     StockQuotesSettingError,
 )
 from mydash.client.stocks.schemas import StockQuotes
@@ -366,6 +367,119 @@ def test_set_current_stock_bars_missing_ticker_key_raise_response_error(
     ],
 )
 def test_set_current_stock_bars_missing_bar_keys_raise_response_error(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_symbols,
+    mock_api_key,
+    mock_api_key_value,
+    mock_api_secret,
+    mock_api_secret_value,
+    mock_api_response,
+    expected_error,
+):
+    monkeypatch.setenv(name=mock_api_key, value=mock_api_key_value)
+    monkeypatch.setenv(name=mock_api_secret, value=mock_api_secret_value)
+
+    stock_client = get_stock_client("alpaca")
+
+    mock_response = MagicMock(return_value=mock_api_response)
+
+    monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
+
+    with pytest.raises(expected_error) as err:
+        stock_client.set_current_stock_bars(symbols=mock_symbols)
+    assert isinstance(err.value, expected_error)
+
+
+
+
+# Testing Validation Errors -> Raise StockBarsSettingError
+@pytest.mark.parametrize(
+    argnames="mock_symbols, mock_api_key, mock_api_key_value, mock_api_secret, mock_api_secret_value, mock_api_response, expected_error",
+    argvalues=[
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "string",
+                    },
+                }
+            },
+            StockBarsSettingError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": "string",
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            StockBarsSettingError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": "string",
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            StockBarsSettingError,
+        ),
+    ],
+)
+def test_set_current_stock_bars_validation_failure_raise_stock_bars_setting_error(
     monkeypatch: pytest.MonkeyPatch,
     mock_symbols,
     mock_api_key,
