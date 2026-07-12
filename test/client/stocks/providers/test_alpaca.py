@@ -69,6 +69,326 @@ def test_set_current_stock_bars_missing_env_vars_raise_header_validation_error(
     assert isinstance(err.value, expected_error)
 
 
+
+
+# Testing Catching Response Errors — missing/empty "bars" key
+@pytest.mark.parametrize(
+    argnames="mock_symbols, mock_api_key, mock_api_key_value, mock_api_secret, mock_api_secret_value, mock_api_response, expected_error",
+    argvalues=[
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {},
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {"hello": "world"},
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {"bars": {}},
+            ResponseError,
+        ),
+    ],
+)
+def test_set_current_stock_bars_missing_bars_key_raise_response_error(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_symbols,
+    mock_api_key,
+    mock_api_key_value,
+    mock_api_secret,
+    mock_api_secret_value,
+    mock_api_response,
+    expected_error,
+):
+    monkeypatch.setenv(name=mock_api_key, value=mock_api_key_value)
+    monkeypatch.setenv(name=mock_api_secret, value=mock_api_secret_value)
+
+    stock_client = get_stock_client("alpaca")
+
+    mock_response = MagicMock(return_value=mock_api_response)
+
+    monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
+
+    with pytest.raises(expected_error) as err:
+        stock_client.set_current_stock_bars(symbols=mock_symbols)
+    assert isinstance(err.value, expected_error)
+
+
+# Testing Catching Response Errors — missing ticker in "bars"
+@pytest.mark.parametrize(
+    argnames="mock_symbols, mock_api_key, mock_api_key_value, mock_api_secret, mock_api_secret_value, mock_api_response, expected_error",
+    argvalues=[
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {"bars": {"SPY": {}}},
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+    ],
+)
+def test_set_current_stock_bars_missing_ticker_key_raise_response_error(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_symbols,
+    mock_api_key,
+    mock_api_key_value,
+    mock_api_secret,
+    mock_api_secret_value,
+    mock_api_response,
+    expected_error,
+):
+    monkeypatch.setenv(name=mock_api_key, value=mock_api_key_value)
+    monkeypatch.setenv(name=mock_api_secret, value=mock_api_secret_value)
+
+    stock_client = get_stock_client("alpaca")
+
+    mock_response = MagicMock(return_value=mock_api_response)
+
+    monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
+
+    with pytest.raises(expected_error) as err:
+        stock_client.set_current_stock_bars(symbols=mock_symbols)
+    assert isinstance(err.value, expected_error)
+
+
+# Testing Catching Response Errors — missing bar field keys (o, c, t)
+@pytest.mark.parametrize(
+    argnames="mock_symbols, mock_api_key, mock_api_key_value, mock_api_secret, mock_api_secret_value, mock_api_response, expected_error",
+    argvalues=[
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                }
+            },
+            ResponseError,
+        ),
+        (
+            ["SPY", "AAPL", "MSFT"],
+            "STOCK_ALPACA_API_KEY_ID",
+            "STOCK_ALPACA_API_KEY_VALUE",
+            "STOCK_ALPACA_API_SECRET_KEY",
+            "STOCK_ALPACA_API_SECRET_VALUE",
+            {
+                "bars": {
+                    "SPY": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "AAPL": {
+                        "o": 12.3,
+                        "c": 12.5,
+                        "t": "2022-08-17T10:07:40.286587431Z",
+                    },
+                    "MSFT": {
+                        "o": 12.3,
+                        "c": 12.5,
+                    },
+                }
+            },
+            ResponseError,
+        ),
+    ],
+)
+def test_set_current_stock_bars_missing_bar_keys_raise_response_error(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_symbols,
+    mock_api_key,
+    mock_api_key_value,
+    mock_api_secret,
+    mock_api_secret_value,
+    mock_api_response,
+    expected_error,
+):
+    monkeypatch.setenv(name=mock_api_key, value=mock_api_key_value)
+    monkeypatch.setenv(name=mock_api_secret, value=mock_api_secret_value)
+
+    stock_client = get_stock_client("alpaca")
+
+    mock_response = MagicMock(return_value=mock_api_response)
+
+    monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
+
+    with pytest.raises(expected_error) as err:
+        stock_client.set_current_stock_bars(symbols=mock_symbols)
+    assert isinstance(err.value, expected_error)
+
+
 # ==============================================
 # ***** Testing 'set_current_stock_quotes' *****
 # ==============================================

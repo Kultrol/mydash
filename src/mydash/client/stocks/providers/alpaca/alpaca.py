@@ -138,7 +138,7 @@ class AlpacaClient(StockClient):
     def set_current_stock_bars(self, symbols: list[str]) -> None:
         params = self._parameter_validation(symbols=symbols)
         headers = self._header_validation()
-        response = HttpApiClient().make_request(
+        response: Dict[str, Any] = HttpApiClient().make_request(
             url=self.bars_url,
             request_method="GET",
             parameters=params.to_query_params(),
@@ -154,15 +154,29 @@ class AlpacaClient(StockClient):
         # ------------------------------------------------------
         # TODO: Encapsulate this into a function
         # ------------------------------------------------------
-        bars: Dict[Any, Any] = response.get("bars", response)
+
+        if not response.get("bars", None):
+            raise ResponseError(query=params, api_response=response)
+        else:
+            bars: Dict[str, Any] = response["bars"]
+
         self.stock_bars = StockBars(bars=[])
         for ticker in params.symbols:
             try:
+                bar: Dict[str, Any] = bars[ticker]
+            except KeyError as err:
+                raise ResponseError(query=params, api_response=response, error=err)
+
+            try:
+                open = bar["o"]
+                close = bar["c"]
+                time = bar["t"]
+            except KeyError as err:
+                raise ResponseError(query=params, api_response=response, error=err)
+
+            try:
                 stock_bar: StockBar = StockBar(
-                    ticker_name=ticker,
-                    open=bars[ticker]["o"],
-                    close=bars[ticker]["c"],
-                    time=bars[ticker]["t"],
+                    ticker_name=ticker, open=open, close=close, time=time
                 )
             except ValidationError as err:
                 raise StockBarsSettingError(err)
