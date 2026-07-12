@@ -19,15 +19,18 @@
 
 | Area | State |
 |------|--------|
-| 🌍 Geocoding + weather | Open-Meteo integration; day-boundary grouping fixed; dev-style raw output |
-| 📰 News headlines | Noozra integration; replace-on-refetch cache; category still hardcoded |
-| 📊 Stock quotes & bars | Alpaca integration; shared HTTP client with timeout; requires `.env` keys |
-| 🔌 Data layer | `HttpApiClient` centralizes HTTP; providers live under `client/*/providers/` |
-| 📋 `brief` command | Chains weather, news, and stocks — no dedicated orchestration layer yet |
+| 🌍 Geocoding + weather | Open-Meteo integration; forecast day-boundary handling in place; provider + factory tests |
+| 📰 News headlines | Noozra integration; replace-on-refetch cache; category still hardcoded; provider + factory tests |
+| 📊 Stock quotes & bars | Alpaca integration; shared HTTP client with timeout; requires `.env` keys; provider + factory tests |
+| 🔌 Data layer | `HttpApiClient` centralizes HTTP; providers under `client/*/providers/`; domain errors evolving |
+| 📋 CLI / `brief` | Typer commands call client factories directly and print models; `brief` chains weather → news → stocks |
+| 🧪 Tests | Client provider/factory coverage for each domain; CLI smoke tests; shared fixtures still incomplete |
 
 ### What we're building toward
 
-A stable terminal app where commands stay thin, business logic lives in a services layer, and the client layer focuses on provider APIs and parsing. Presentation (Rich tables and panels) stays separate from data fetching. Phase 1 data correctness is done; next focus is the services layer, config-driven CLI, and Rich renderers.
+A stable terminal app where commands stay thin, business logic lives in a services layer, and the client layer focuses on provider APIs and parsing. Presentation (Rich tables and panels) stays separate from data fetching.
+
+The **data layer** is the furthest along. Next focus is the **MVP of orchestration** (services + config) and the **MVP of presentation** (commands + renderers), then deeper refactors once those pieces work end-to-end.
 
 ---
 
@@ -53,7 +56,7 @@ Each data domain follows a factory + protocol + provider implementation pattern 
 
 ### Current shape (today)
 
-The CLI still calls client factories directly — the services layer is stubbed. Recent refactors on `main` improved the data layer:
+The CLI still calls client factories directly. `services/`, `cli/commands/`, and `cli/renderers/` exist as package placeholders for the next MVPs — they are not wired up yet.
 
 ```mermaid
 flowchart LR
@@ -64,12 +67,14 @@ flowchart LR
     CLI --> Factories --> Providers --> HttpApi
 ```
 
-|      Piece      | Location | Notes |
-|-----------------|----------|-------|
-| **Shared HTTP** | `client/http_api/` | `HttpApiClient.make_request()` replaces per-client `_make_request` |
-| **Providers**   | `client/<base_client>/providers/<name>/` | One directory per provider (Open-Meteo, Noozra, Alpaca) |
-| **Factories**   | `client/<base_client>/factory.py` | One factory per Client |
-|    **CLI**      | `cli/main.py`   |
+| Piece | Location | Notes |
+|-------|----------|-------|
+| **Shared HTTP** | `client/http_api/` | `HttpApiClient.make_request()` for all providers |
+| **Providers** | `client/<domain>/providers/<name>/` | Open-Meteo, Noozra, Alpaca |
+| **Factories** | `client/<domain>/factory.py` | One factory per domain |
+| **CLI** | `cli/main.py` | Commands + `load_dotenv()` at bootstrap |
+
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -84,7 +89,7 @@ flowchart LR
 | Secrets | python-dotenv | `.env` for API keys |
 | Tooling | [uv](https://docs.astral.sh/uv/) + hatchling | Install, run, package |
 
-**Planned (CLI stage):** TOML user config, pytest-cov, CI pipeline.
+Likely additions as the CLI matures: TOML user config, broader test fixtures, coverage reporting, and CI.
 
 ---
 
@@ -125,61 +130,24 @@ uv run python -m mydash.cli.main brief
 uv run python -m mydash.cli.main --help
 ```
 
-Output is raw model dumps in places — dedicated renderers and config-driven defaults are on the roadmap. If something fails, check that dependencies are installed (`uv sync`) and that stock keys are set when using `stocks` or `brief`.
+Output is largely raw model dumps for now — richer Rich layouts land with the presentation MVP. City, news category, and stock symbols are still hardcoded. If something fails, check that dependencies are installed (`uv sync`) and that stock keys are set when using `stocks` or `brief`.
 
 ---
 
-## 🚀 Roadmap
+## 🔭 Looking ahead
 
-A lot remains before mydash is production-ready. Work is staged roughly in dependency order.
+Direction of travel is intentional, though priorities and sequencing may shift as the project evolves.
 
-### Phase 1 — Data correctness (complete)
+**How work is paced:** ship an **MVP of each core component** before deep refactors of that component. In practice that means getting the initial **service / orchestration** path and the **CLI / UI** path working end-to-end first, then refactoring, hardening, and polishing once those layers exist. Broad cleanup is not a gate that blocks the first useful version of a layer.
 
-- [X] Fix weather forecast day-boundary grouping
-- [X] Replace-on-fetch cache semantics for news and stocks
-- [X] HTTP timeout parity for Alpaca (match other clients)
+Themes we're steering toward:
 
-### Recent — client architecture
+- **Orchestration** — domain services, brief aggregation, config-driven inputs instead of hardcodes
+- **Presentation** — thin commands and Rich renderers instead of printing models
+- **Quality follow-through** — tests, errors, and client hygiene after each MVP; among later refactors, shared fixtures for client tests so sample payloads and helpers live in one place
+- **Longer horizon** — more dashboard domains (calendar, tasks, AI-assisted briefs, and so on) and eventually other interfaces that reuse the same orchestration
 
-- [X] Shared `HttpApiClient` across all domain clients
-- [X] Provider-per-directory layout (`client/*/providers/`)
-- [X] `load_dotenv()` at CLI bootstrap (removed from `AlpacaClient`)
-- [~] Domain error hierarchy (preliminary — more exceptions expected)
-
-### Phase 2 — Test foundation
-
-- [ ] Shared pytest fixtures and sample API payloads
-- [ ] Stock tests that do not depend on a local `.env`
-- [ ] Weather forecast parser coverage (including month boundaries)
-- [ ] News and Alpaca success-path and field-mapping tests
-- [ ] Cache contamination regression tests
-- [ ] Centralized HTTP error test helpers
-
-### Phase 3 — Three-layer CLI
-
-- [ ] Services layer for weather, news, and stocks
-- [ ] Brief orchestration service with partial-failure handling
-- [ ] Central configuration (city, categories, watchlist, secrets bootstrap)
-- [ ] Split commands and domain Rich renderers
-- [ ] `daily-brief` as the primary aggregated command (`brief` alias during transition)
-- [ ] Config-driven inputs instead of hardcoded city and category
-
-### Phase 4 — Client hardening and quality
-
-- [ ] Consistent factory behavior and injectable settings
-- [ ] Weather parser extracted for isolated testing
-- [ ] Configurable stock watchlist
-- [ ] Complete domain exception hierarchy and structured logging in clients
-- [ ] Provider response validation models
-- [ ] Test import consistency and duplicate test cleanup (news tests need path fixes)
-- [ ] Coverage reporting and CI
-
-### Later — expanded CLI
-
-- [ ] Calendar and tasks integration
-- [ ] AI-generated brief insights
-- [ ] Reverse geocoding and automatic location
-- [ ] Theming and richer terminal layouts
+How new domains get added (client → service → renderer → brief) will be documented properly once the three-layer CLI is stable. Until then, treat the multi-domain future as vision more than a fixed guide.
 
 ---
 
@@ -190,21 +158,15 @@ uv sync --group dev
 uv run pytest
 ```
 
-Client tests cover geocoding, weather, news, stocks, and CLI smoke paths. Shared `conftest.py` fixtures are still TODO — see comments in `test/conftest.py`.
+Client tests cover geocoding, weather, news, and stocks (factories and providers). There is a small CLI smoke path. Shared fixtures in `test/conftest.py` are still mostly stubs — provider tests currently own their own sample data.
 
 Contributions, ideas, and feedback are welcome. This is a personal project — I'm learning as I go — focused on clean structure, good terminal UX, and reliable data aggregation.
-
-### Where this is headed
-
-Today mydash centers on weather, news, and markets — but the architecture is meant to support more. Over time I'd like to plug in calendar and tasks, commute or travel context, health or fitness summaries, local events, and AI-generated "what matters today" briefs, all feeding the same daily dashboard.
-
-How new domains get added (client → service → renderer → brief) will be documented properly once the three-layer CLI is stable. Until then, treat this as the vision, not a step-by-step guide.
 
 ---
 
 ## AI-assisted development
 
-Parts of this codebase were built with [Grok Build](https://x.ai/cli) — in the Cursor editor and via the Cursor model on the command line. That work includes small fixes, comments, `TODO` markers, and targeted patches. Design and larger features are reviewed manually. AI-assisted changes land on `grok/*` branches before merge and `pytest`.
+Parts of this codebase were built with [Grok Build](https://x.ai/cli) — in the Cursor editor and on the command line, using models including Grok 4.5 and earlier Cursor-hosted Grok variants. That work includes small fixes, comments, `TODO` markers, and targeted patches. Design and larger features are reviewed manually. AI-assisted changes land on `grok/*` branches before merge and `pytest`.
 
 ---
 
