@@ -7,6 +7,7 @@ from mydash.client.stocks.factory import get_stock_client
 from mydash.models.news import NewsHeadlines
 from mydash.models.stocks import StockBars, StockQuotes
 from mydash.models.weather import MultiDayForecast
+from mydash.services.stocks import StockService
 from mydash.services.weather import WeatherService
 
 DEFAULT_CITY = "Miami"
@@ -37,7 +38,9 @@ class BriefService:
 
         weather = WeatherService().fetch_today_weather_forecast(city=city)
         headlines = self._fetch_headlines(news_category)
-        stock_quotes, stock_bars = self._fetch_stocks(symbols)
+        stock_quotes, stock_bars = StockService(
+            stock_ticker_symbols=symbols
+        ).fetch_stock_bars_and_quotes()
 
         return DailyBrief(
             headlines=headlines,
@@ -53,11 +56,3 @@ class BriefService:
         news_client = get_news_client()
         news_client.set_news_headlines(category=category)
         return news_client.get_news_headlines()
-
-    def _fetch_stocks(self, symbols: list[str]) -> tuple[StockQuotes, StockBars]:
-        stock_client = get_stock_client()
-        stock_client.set_current_stock_quotes(symbols=symbols)
-        stock_quotes = stock_client.get_current_stock_quotes()
-        stock_client.set_current_stock_bars(symbols=symbols)
-        stock_bars = stock_client.get_current_stock_bars()
-        return stock_quotes, stock_bars
