@@ -1,12 +1,12 @@
 [project]
 name = "mydash"
-version = "0.3.0"
-description = "A beautiful command-line daily dashboard for weather, news, markets, calendar & AI briefs."
+version = "0.5.0"
+description = "Terminal daily dashboard: weather, news, and markets in one brief."
 readme = "README.md"
 authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
 license = { text = "MIT" }
 
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
   "httpx>=0.28.1",
   "pydantic>=2.13.4",
@@ -14,6 +14,9 @@ dependencies = [
   "rich>=15.0.0",
   "typer>=0.26.4",
 ]
+
+[project.scripts]
+mydash = "mydash.cli.main:app"
 
 [dependency-groups]
 dev = [

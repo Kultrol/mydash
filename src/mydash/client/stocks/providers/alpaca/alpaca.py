@@ -99,9 +99,6 @@ class AlpacaClient(StockClient):
         else:
             quotes: Dict[str, Any] = response["quotes"]
 
-        # ------------------------------------------------------
-        # TODO: Encapsulate this into a function
-        # ------------------------------------------------------
         self.stock_quotes = StockQuotes(quotes=[])
         for ticker in params.symbols:
             if not quotes.get(ticker, None):
@@ -150,10 +147,6 @@ class AlpacaClient(StockClient):
                 }
             ),
         )
-
-        # ------------------------------------------------------
-        # TODO: Encapsulate this into a function
-        # ------------------------------------------------------
 
         if not response.get("bars", None):
             raise ResponseError(query=params, api_response=response)

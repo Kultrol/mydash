@@ -9,15 +9,14 @@ wheels/
 # Virtual environments
 .venv
 
-# Environment variable file
+# Secrets
 .env
 
-
-
-#Misc
+# Editor / local tooling
 .idea
 .python-version
-
-
-docs/
 .zed
+.pytest_cache/
+
+# Internal design notes (not published)
+docs/DESIGN.md

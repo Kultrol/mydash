@@ -45,21 +45,15 @@ class OpenMeteoClient(GeocodingClient):
     def set_coordinates(self, city: str) -> None:
         """Resolve and cache coordinates for *city* on this client instance."""
 
-        # INFO - Stage 1: City Input Validation
-        # Validating Parameter Values
         try:
-            params = OpenMeteoParams(
-                name=city
-            )  # Pydantic OpenMeteo parameter validation
+            params = OpenMeteoParams(name=city)
         except ValidationError as err:
             raise ParameterSettingError(err)
 
-        # Creating an HttpApiClient and making a request to the api.
         api_response = HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.model_dump()
         )
 
-        # INFO - Stage 2: Response Checking
         raw_results = api_response.get("results", None)
 
         if not raw_results:
@@ -76,7 +70,6 @@ class OpenMeteoClient(GeocodingClient):
 
         coordinate_data = response.results[0]
 
-        # INFO - Stage 3: Setting Coordinate Validation
         try:
             self.coordinates = Coordinates.model_validate(
                 {

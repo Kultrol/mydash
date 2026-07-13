@@ -84,10 +84,6 @@ class OpenMeteoClient(WeatherClient):
         except KeyError as err:
             raise ResponseError(query=params, api_response=hourly_data, error=err)
 
-        # ------------------------------------------------
-        # TODO: Encapsulate the below logic in its own function.
-        # ------------------------------------------------
-
         current_day = DayForecast(month=0, day=0, hours=[])
         weather_forecast: MultiDayForecast = MultiDayForecast(days=[])
 
