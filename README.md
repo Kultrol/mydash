@@ -4,6 +4,7 @@
 > Weather, news, markets, and eventually calendar and AI-powered briefs — all in one place.
 
 [![Python](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/Kultrol/mydash)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Status](https://img.shields.io/badge/status-active%20development-orange)](https://github.com/Kultrol/mydash)
 
@@ -15,23 +16,27 @@
 
 ## 📍 Status
 
-### What you can try today (v0.1)
+**v0.3.0** — Initial client layer and domain tests are **complete**. Shared domain models live in `models/`. The **services layer is under active development**.
+
+### Where things stand
 
 | Area | State |
 |------|--------|
-| 🌍 Geocoding + weather | Open-Meteo integration; forecast day-boundary handling in place; provider + factory tests |
-| 📰 News headlines | Noozra integration; replace-on-refetch cache; category still hardcoded; provider + factory tests |
-| 📊 Stock quotes & bars | Alpaca integration; shared HTTP client with timeout; requires `.env` keys; provider + factory tests |
-| 🔌 Data layer | `HttpApiClient` centralizes HTTP; providers under `client/*/providers/`; domain errors evolving |
-| 📋 CLI / `brief` | Typer commands call client factories directly and print models; `brief` chains weather → news → stocks |
-| 🧪 Tests | Client provider/factory coverage for each domain; CLI smoke tests; shared fixtures still incomplete |
+| 🌍 Geocoding + weather | ✅ Initial client complete — Open-Meteo provider, factory, protocol; provider + factory tests |
+| 📰 News headlines | ✅ Initial client complete — Noozra provider, factory, protocol; provider + factory tests |
+| 📊 Stock quotes & bars | ✅ Initial client complete — Alpaca provider, factory, protocol; requires `.env` keys; provider + factory tests |
+| 📦 Shared models | ✅ Domain Pydantic types in `models/` (geocoding, weather, news, stocks) for clients, services, and CLI |
+| 🔌 Data layer HTTP | ✅ `HttpApiClient` centralizes HTTP; providers under `client/*/providers/` |
+| ⚙️ Services | 🚧 **Active development** — orchestration MVP (domain services, config, brief aggregation) |
+| 📋 CLI / `brief` | Typer commands still call client factories directly and print models; not yet wired through services |
+| 🎨 Presentation | Renderers/commands packages exist as placeholders; Rich layouts not wired yet |
+| 🧪 Tests | ✅ Initial client suite for each domain (providers + factories); CLI smoke path; service tests still to come |
 
 ### What we're building toward
 
 A stable terminal app where commands stay thin, business logic lives in a services layer, and the client layer focuses on provider APIs and parsing. Presentation (Rich tables and panels) stays separate from data fetching.
 
-The **data layer** is the furthest along. Next focus is the **MVP of orchestration** (services + config) and the **MVP of presentation** (commands + renderers), then deeper refactors once those pieces work end-to-end.
-
+The **data layer (clients + models + tests)** has its first solid cut. Focus now is the **MVP of orchestration** (services + config) and then the **MVP of presentation** (commands + renderers), with deeper refactors once those pieces work end-to-end.
 ---
 
 ## 🏗️ Architecture
@@ -50,30 +55,35 @@ flowchart LR
 |-------|----------------|
 | **Presentation** | Commands, flags, terminal layout — no HTTP or provider parsing |
 | **Orchestration** | Multi-step flows, user settings, brief aggregation, DTOs |
-| **Data** | Factories, protocols, API calls, schemas per domain (geocoding, weather, news, stocks) |
+| **Models** | Shared domain Pydantic types used across services, CLI, and clients |
+| **Data** | Factories, protocols, API calls, provider-local schemas (geocoding, weather, news, stocks) |
 
-Each data domain follows a factory + protocol + provider implementation pattern so new sources can be added without rewriting the stack.
+Each data domain follows a factory + protocol + provider implementation pattern so new sources can be added without rewriting the stack. Domain response shapes live in `models/`, not inside each client package.
 
 ### Current shape (today)
 
-The CLI still calls client factories directly. `services/`, `cli/commands/`, and `cli/renderers/` exist as package placeholders for the next MVPs — they are not wired up yet.
+Initial clients and tests are in place. The CLI still calls client factories directly while services are being built. `cli/commands/` and `cli/renderers/` remain placeholders until the orchestration MVP is ready to wire up.
 
 ```mermaid
 flowchart LR
     CLI["cli/main.py"]
+    Models["models/"]
     Factories["client/*/factory.py"]
     Providers["client/*/providers/*"]
     HttpApi["client/http_api"]
     CLI --> Factories --> Providers --> HttpApi
+    Factories --> Models
+    Providers --> Models
 ```
 
 | Piece | Location | Notes |
 |-------|----------|-------|
+| **Shared models** | `models/` | Domain types: weather, news, stocks, geocoding |
 | **Shared HTTP** | `client/http_api/` | `HttpApiClient.make_request()` for all providers |
 | **Providers** | `client/<domain>/providers/<name>/` | Open-Meteo, Noozra, Alpaca |
 | **Factories** | `client/<domain>/factory.py` | One factory per domain |
+| **Services** | `services/` | 🚧 Under active development |
 | **CLI** | `cli/main.py` | Commands + `load_dotenv()` at bootstrap |
-
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
@@ -138,17 +148,16 @@ Output is largely raw model dumps for now — richer Rich layouts land with the 
 
 Direction of travel is intentional, though priorities and sequencing may shift as the project evolves.
 
-**How work is paced:** ship an **MVP of each core component** before deep refactors of that component. In practice that means getting the initial **service / orchestration** path and the **CLI / UI** path working end-to-end first, then refactoring, hardening, and polishing once those layers exist. Broad cleanup is not a gate that blocks the first useful version of a layer.
+**How work is paced:** ship an **MVP of each core component** before deep refactors of that component. The initial **client / data** MVP is done. Current work is the **service / orchestration** path; next is the **CLI / UI** path end-to-end, then refactoring, hardening, and polishing once those layers exist.
 
 Themes we're steering toward:
 
-- **Orchestration** — domain services, brief aggregation, config-driven inputs instead of hardcodes
-- **Presentation** — thin commands and Rich renderers instead of printing models
-- **Quality follow-through** — tests, errors, and client hygiene after each MVP; among later refactors, shared fixtures for client tests so sample payloads and helpers live in one place
+- **Orchestration (now)** — domain services, brief aggregation, config-driven inputs instead of hardcodes
+- **Presentation (next)** — thin commands and Rich renderers instead of printing models
+- **Quality follow-through** — service-layer tests; shared fixtures so sample payloads and helpers live in one place; continued client hygiene
 - **Longer horizon** — more dashboard domains (calendar, tasks, AI-assisted briefs, and so on) and eventually other interfaces that reuse the same orchestration
 
-How new domains get added (client → service → renderer → brief) will be documented properly once the three-layer CLI is stable. Until then, treat the multi-domain future as vision more than a fixed guide.
-
+How new domains get added (models → client → service → renderer → brief) will be documented properly once the three-layer CLI is stable. Until then, treat the multi-domain future as vision more than a fixed guide.
 ---
 
 ## 🧪 Development
@@ -158,10 +167,9 @@ uv sync --group dev
 uv run pytest
 ```
 
-Client tests cover geocoding, weather, news, and stocks (factories and providers). There is a small CLI smoke path. Shared fixtures in `test/conftest.py` are still mostly stubs — provider tests currently own their own sample data.
+Initial client tests cover geocoding, weather, news, and stocks (factories and providers). There is a small CLI smoke path. Service-layer tests will land with the services MVP. Shared fixtures in `test/conftest.py` are still mostly stubs — provider tests currently own their own sample data.
 
 Contributions, ideas, and feedback are welcome. This is a personal project — I'm learning as I go — focused on clean structure, good terminal UX, and reliable data aggregation.
-
 ---
 
 ## AI-assisted development
@@ -184,4 +192,4 @@ MIT — see [`LICENSE`](LICENSE).
 
 **Built with ❤️ by [Kevin Medina](https://github.com/Kultrol) · Miami, FL**
 
-*Last updated: July 2026 · Actively iterating*
+*Last updated: July 2026 · v0.3.0 · Services layer in progress*
