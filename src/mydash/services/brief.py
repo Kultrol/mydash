@@ -2,10 +2,10 @@
 
 from pydantic import BaseModel
 
-from mydash.client.news.factory import get_news_client
 from mydash.models.news import NewsHeadlines
 from mydash.models.stocks import StockBars, StockQuotes
 from mydash.models.weather import MultiDayForecast
+from mydash.services.news import NewsService
 from mydash.services.stocks import StocksService
 from mydash.services.weather import WeatherService
 
@@ -36,7 +36,7 @@ class BriefService:
         symbols = list(DEFAULT_SYMBOLS)
 
         weather = WeatherService().fetch_today_weather_forecast(city=city)
-        headlines = self._fetch_headlines(news_category)
+        headlines = NewsService().fetch_news(category=news_category)
         stock_quotes, stock_bars = StocksService(
             stock_ticker_symbols=symbols
         ).fetch_stock_bars_and_quotes()
@@ -50,8 +50,3 @@ class BriefService:
             news_category=news_category,
             symbols=symbols,
         )
-
-    def _fetch_headlines(self, category: str) -> NewsHeadlines:
-        news_client = get_news_client()
-        news_client.set_news_headlines(category=category)
-        return news_client.get_news_headlines()
