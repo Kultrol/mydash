@@ -4,11 +4,14 @@
 > Weather, news, and markets — one command, three stacked panels.
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/Kultrol/mydash)
+[![Version](https://img.shields.io/badge/version-0.5.0%20MVP-blue.svg)](https://github.com/Kultrol/mydash/releases/tag/v0.5.0)
+[![Release](https://img.shields.io/github/v/release/Kultrol/mydash?label=latest%20release)](https://github.com/Kultrol/mydash/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/status-MVP-brightgreen.svg)](https://github.com/Kultrol/mydash)
+[![Status](https://img.shields.io/badge/status-MVP-brightgreen.svg)](https://github.com/Kultrol/mydash/releases/tag/v0.5.0)
 
-**mydash** is a friendly command-line daily brief for Python folks who live in the terminal. It pulls live data from public APIs and paints it with Rich so your morning check-in feels quick and clear. The **v0.5.0 MVP** shows a clean three-layer layout: **CLI → services → clients**.
+**mydash** is a friendly command-line daily brief for Python folks who live in the terminal. It pulls live data from public APIs and paints it with Rich so your morning check-in feels quick and clear.
+
+> **v0.5.0 is an MVP demo** — not a polished 1.0 product. One command (`brief`), three panels, and a clean three-layer layout (**CLI → services → clients**) you can install and try. City, news category, and stock symbols are still hardcoded on purpose.
 
 ---
 
@@ -44,24 +47,32 @@ You’ll get three full-width panels:
 
 - 🐍 **Python 3.12+**
 - 🌐 Network access
-- ☁️ Weather & geocoding: [Open-Meteo](https://open-meteo.com/) (no key)
-- 🗞️ News: Noozra (no key)
-- 📊 Stocks: [Alpaca](https://alpaca.markets/) API key + secret in `.env`
+- ☁️ Weather & geocoding: [Open-Meteo](https://open-meteo.com/) (**no API key**)
+- 🗞️ News: Noozra (**no API key**)
+- 📊 Stocks: [Alpaca](https://alpaca.markets/) API key + secret in `.env` (**optional** — only for the markets panel)
 
 ---
 
 ## 📦 Install
 
+### Option A — install from the GitHub Release (quickest)
+
+Download and install the published **v0.5.0 MVP** wheel (Python 3.12+):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install https://github.com/Kultrol/mydash/releases/download/v0.5.0/mydash-0.5.0-py3-none-any.whl
+mydash brief
+```
+
+You can also grab the `.whl` or `.tar.gz` from the [Releases page](https://github.com/Kultrol/mydash/releases) and `pip install` the file locally.
+
+### Option B — install from source
+
 ```bash
 git clone https://github.com/Kultrol/mydash.git
 cd mydash
-```
-
-Optional — needed for market data:
-
-```bash
-cp .env.example .env
-# Add STOCK_ALPACA_API_KEY_ID and STOCK_ALPACA_API_SECRET_KEY
 ```
 
 With [uv](https://docs.astral.sh/uv/) (recommended):
@@ -80,6 +91,36 @@ pip install -e .
 
 ---
 
+## 🔐 Environment setup
+
+Weather and news work **with no configuration**. Markets need Alpaca credentials.
+
+1. Create a free account at [Alpaca](https://alpaca.markets/) and generate API keys (paper-trading keys are fine for market data).
+2. Copy the example env file and fill in your keys:
+
+```bash
+cp .env.example .env
+```
+
+3. Edit `.env`:
+
+```bash
+STOCK_ALPACA_API_KEY_ID=your_alpaca_key_id
+STOCK_ALPACA_API_SECRET_KEY=your_alpaca_secret
+```
+
+| Variable | Required? | Used for |
+|----------|-----------|----------|
+| `STOCK_ALPACA_API_KEY_ID` | For markets panel | Alpaca API key ID |
+| `STOCK_ALPACA_API_SECRET_KEY` | For markets panel | Alpaca API secret |
+
+- Place `.env` in the directory from which you run `mydash` (the CLI loads it via `python-dotenv` at startup).
+- **Never commit `.env`** — it is gitignored. Only `.env.example` (placeholders) is tracked.
+
+If you skip Alpaca keys, you can still run `mydash brief`; weather and headlines should appear, while markets may fail or look empty.
+
+---
+
 ## 🚀 Usage
 
 ```bash
@@ -90,7 +131,16 @@ mydash --help
 python -m mydash.cli.main brief
 ```
 
-If markets look empty or fail, double-check your `.env` keys and that deps are installed (`uv sync` or `pip install -e .`).
+---
+
+## 🔧 Troubleshooting
+
+| Problem | What to try |
+|---------|-------------|
+| `mydash: command not found` | Activate your venv, or reinstall (`pip install …` / `uv sync`) so the `mydash` entry point is on `PATH` |
+| Markets panel empty or errors | Confirm `.env` has both Alpaca vars, keys are valid, and you started the app from a directory that can see that `.env` |
+| Wrong Python version | Use **3.12+** (`python --version`) |
+| Network / API errors | Check connectivity; Open-Meteo and Noozra need outbound HTTPS |
 
 ---
 
@@ -153,7 +203,7 @@ Tests cover clients (providers + factories), brief service orchestration, and a 
 - ⌨️ **CLI polish** — clearer help and error messages; flags to override defaults for a single run; optional focused commands (weather / news / stocks) that go through the service layer, not raw client calls  
 - 🔌 **Solid data layer** — fix remaining edge cases in clients (for example forecast day grouping and how cached results are replaced on a new fetch), consistent request timeouts so calls don’t hang forever, and cleaner shared HTTP plumbing where it still duplicates  
 - 🧪 **Tests & automation** — refactor the suite with shared fixtures and less duplicated setup, then add automated checks on every push and enough coverage that refactors stay safe  
-- 📚 **Docs for a stable release** — changelog, install notes that match real behavior, and a command surface that feels intentional for daily use  
+- 📚 **Docs for a stable release** — keep [CHANGELOG](CHANGELOG.md) current, install notes that match real behavior, and a command surface that feels intentional for daily use  
 
 ### After 1.0
 
