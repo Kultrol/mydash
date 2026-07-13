@@ -2,13 +2,12 @@
 
 from pydantic import BaseModel
 
-from mydash.client.geocoding.factory import get_geocoding_client
 from mydash.client.news.factory import get_news_client
 from mydash.client.stocks.factory import get_stock_client
-from mydash.client.weather.factory import get_weather_client
 from mydash.models.news import NewsHeadlines
 from mydash.models.stocks import StockBars, StockQuotes
 from mydash.models.weather import MultiDayForecast
+from mydash.services.weather import WeatherService
 
 DEFAULT_CITY = "Miami"
 DEFAULT_NEWS_CATEGORY = "tech"
@@ -36,7 +35,7 @@ class BriefService:
         news_category = DEFAULT_NEWS_CATEGORY
         symbols = list(DEFAULT_SYMBOLS)
 
-        weather = self._fetch_weather(city)
+        weather = WeatherService().fetch_today_weather_forecast(city=city)
         headlines = self._fetch_headlines(news_category)
         stock_quotes, stock_bars = self._fetch_stocks(symbols)
 
@@ -50,26 +49,12 @@ class BriefService:
             symbols=symbols,
         )
 
-    def _fetch_weather(self, city: str) -> MultiDayForecast:
-        geocoding_client = get_geocoding_client()
-        geocoding_client.set_coordinates(city)
-        coordinates = geocoding_client.get_coordinates()
-
-        weather_client = get_weather_client()
-        weather_client.set_coordinates(coordinates)
-        weather_client.set_weather_forecast(
-            forecast_length=1, backwardcast_length=1
-        )
-        return weather_client.get_weather_forecast()
-
     def _fetch_headlines(self, category: str) -> NewsHeadlines:
         news_client = get_news_client()
         news_client.set_news_headlines(category=category)
         return news_client.get_news_headlines()
 
-    def _fetch_stocks(
-        self, symbols: list[str]
-    ) -> tuple[StockQuotes, StockBars]:
+    def _fetch_stocks(self, symbols: list[str]) -> tuple[StockQuotes, StockBars]:
         stock_client = get_stock_client()
         stock_client.set_current_stock_quotes(symbols=symbols)
         stock_quotes = stock_client.get_current_stock_quotes()
