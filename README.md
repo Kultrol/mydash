@@ -20,6 +20,14 @@ Fire it up:
 mydash brief
 ```
 
+![mydash brief screenshot](docs/assets/brief-screenshot.png)
+
+*Three stacked panels: markets, weather, and headlines.*
+
+![mydash brief demo](docs/assets/brief-demo.gif)
+
+*Short walkthrough of the daily brief in the terminal.*
+
 You’ll get three full-width panels:
 
 | Panel | What you see |
