@@ -2,7 +2,7 @@ from mydash.client.stocks.factory import get_stock_client
 from mydash.models.stocks import StockBars, StockQuotes
 
 
-class StockService:
+class StocksService:
     def __init__(self, stock_ticker_symbols: list[str], stock_provider: str = "alpaca"):
         self.stock_client = get_stock_client(provider=stock_provider)
         self.symbols: list[str] = stock_ticker_symbols

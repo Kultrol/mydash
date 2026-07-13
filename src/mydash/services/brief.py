@@ -3,11 +3,10 @@
 from pydantic import BaseModel
 
 from mydash.client.news.factory import get_news_client
-from mydash.client.stocks.factory import get_stock_client
 from mydash.models.news import NewsHeadlines
 from mydash.models.stocks import StockBars, StockQuotes
 from mydash.models.weather import MultiDayForecast
-from mydash.services.stocks import StockService
+from mydash.services.stocks import StocksService
 from mydash.services.weather import WeatherService
 
 DEFAULT_CITY = "Miami"
@@ -38,7 +37,7 @@ class BriefService:
 
         weather = WeatherService().fetch_today_weather_forecast(city=city)
         headlines = self._fetch_headlines(news_category)
-        stock_quotes, stock_bars = StockService(
+        stock_quotes, stock_bars = StocksService(
             stock_ticker_symbols=symbols
         ).fetch_stock_bars_and_quotes()
 
