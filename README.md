@@ -84,7 +84,6 @@ flowchart LR
 | **Factories** | `client/<domain>/factory.py` | One factory per domain |
 | **Services** | `services/` | 🚧 Under active development |
 | **CLI** | `cli/main.py` | Commands + `load_dotenv()` at bootstrap |
-More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
