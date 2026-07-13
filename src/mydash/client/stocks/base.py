@@ -6,7 +6,7 @@ Follows the same two-phase pattern as weather and news clients.
 from abc import abstractmethod
 from typing import Protocol
 
-from mydash.client.stocks.schemas import StockBars, StockQuotes
+from mydash.models.stocks import StockBars, StockQuotes
 
 
 class StockClient(Protocol):

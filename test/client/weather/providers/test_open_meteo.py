@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mydash.client.geocoding.schemas import Coordinates
+from mydash.models.geocoding import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.weather.factory import get_weather_client
 from mydash.client.weather.providers.open_meteo.errors import (
@@ -15,7 +15,7 @@ from mydash.client.weather.providers.open_meteo.errors import (
     ParameterSettingError,
     ResponseError,
 )
-from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
+from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
 
 # =====================================
 # ***** Testing 'set_coordinates' ***** | TESTING COMPLETE : 07/09/26

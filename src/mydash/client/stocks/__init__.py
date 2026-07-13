@@ -1,1 +1,1 @@
-"""Stock quote clients and schemas."""
+"""Stock quote clients."""

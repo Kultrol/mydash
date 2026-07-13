@@ -15,7 +15,7 @@ from mydash.client.news.providers.noozra.errors import (
     MissingNewsHeadlinesError,
     ParameterSettingError,
 )
-from mydash.client.news.schemas import HeadLine, NewsHeadlines
+from mydash.models.news import HeadLine, NewsHeadlines
 
 
 class NoozraParams(BaseModel):

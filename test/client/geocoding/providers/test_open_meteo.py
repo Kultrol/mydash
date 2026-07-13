@@ -12,7 +12,7 @@ from mydash.client.geocoding.providers.open_meteo.errors import (
     OpenMeteoResponseError,
     ParameterSettingError,
 )
-from mydash.client.geocoding.schemas import Coordinates
+from mydash.models.geocoding import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 
 # =============================================

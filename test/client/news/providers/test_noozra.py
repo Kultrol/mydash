@@ -13,7 +13,7 @@ from mydash.client.news.providers.noozra.errors import (
     MissingNewsHeadlinesError,
     ParameterSettingError,
 )
-from mydash.client.news.schemas import NewsHeadlines
+from mydash.models.news import NewsHeadlines
 
 # ======================================
 # ***** Testing set_news_headlines *****

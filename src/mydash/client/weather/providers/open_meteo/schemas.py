@@ -2,7 +2,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from mydash.client.geocoding.schemas import Coordinates
+from mydash.models.geocoding import Coordinates
 
 HourlyVariable = Literal[
     "temperature_2m",

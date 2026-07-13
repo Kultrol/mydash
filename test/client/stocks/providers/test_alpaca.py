@@ -16,7 +16,7 @@ from mydash.client.stocks.providers.alpaca.errors import (
     StockBarsSettingError,
     StockQuotesSettingError,
 )
-from mydash.client.stocks.schemas import StockBars, StockQuotes
+from mydash.models.stocks import StockBars, StockQuotes
 
 # ==============================================
 # ***** Testing 'set_current_stock_bars' *****

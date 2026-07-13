@@ -7,8 +7,8 @@ the provider; ``get_*`` methods return the cached result without making new requ
 from abc import abstractmethod
 from typing import Protocol, runtime_checkable
 
-from mydash.client.geocoding.schemas import Coordinates
-from mydash.client.weather.schemas import MultiDayForecast
+from mydash.models.geocoding import Coordinates
+from mydash.models.weather import MultiDayForecast
 
 
 @runtime_checkable

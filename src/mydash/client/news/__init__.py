@@ -1,1 +1,1 @@
-"""News headline clients and schemas."""
+"""News headline clients."""

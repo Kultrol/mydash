@@ -1,7 +1,7 @@
 """Geocoding client protocol.
 
 Defines the contract for resolving human-readable place names to coordinates.
-Downstream weather clients consume :class:`~mydash.client.geocoding.schemas.Coordinates`.
+Downstream weather clients consume :class:`~mydash.models.geocoding.Coordinates`.
 """
 
 from abc import abstractmethod
@@ -9,7 +9,7 @@ from typing import Protocol
 
 import httpx
 
-from mydash.client.geocoding.schemas import Coordinates
+from mydash.models.geocoding import Coordinates
 
 
 class GeocodingClient(Protocol):

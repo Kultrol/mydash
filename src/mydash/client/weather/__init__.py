@@ -1,1 +1,1 @@
-"""Weather forecast clients and schemas."""
+"""Weather forecast clients."""

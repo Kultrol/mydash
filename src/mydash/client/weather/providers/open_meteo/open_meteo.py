@@ -9,7 +9,7 @@ from datetime import datetime
 import httpx
 from pydantic import ValidationError
 
-from mydash.client.geocoding.schemas import Coordinates
+from mydash.models.geocoding import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.weather.base import WeatherClient
 from mydash.client.weather.providers.open_meteo.errors import (
@@ -22,7 +22,7 @@ from mydash.client.weather.providers.open_meteo.errors import (
     ResponseError,
 )
 from mydash.client.weather.providers.open_meteo.schemas import Parameters
-from mydash.client.weather.schemas import DayForecast, HourForecast, MultiDayForecast
+from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
 
 
 class OpenMeteoClient(WeatherClient):
