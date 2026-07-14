@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.traceback import install
 
+from mydash.cli.commands.set_cmd import set_app
 from mydash.cli.renderers.brief import render_brief
 from mydash.services.brief import BriefService
 
@@ -15,10 +16,12 @@ app = typer.Typer(help="mydash — personal daily dashboard in the terminal.")
 
 load_dotenv()
 
+app.add_typer(set_app, name="set")
+
 
 @app.callback()
 def main() -> None:
-    """mydash CLI. Use a subcommand such as ``brief``."""
+    """mydash CLI. Use a subcommand such as ``brief`` or ``set``."""
 
 
 @app.command("brief")

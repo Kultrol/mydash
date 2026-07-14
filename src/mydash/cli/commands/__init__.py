@@ -1,1 +1,1 @@
-"""Optional home for per-command Typer handlers as the CLI grows."""
+"""Per-command Typer handlers for the mydash CLI."""
