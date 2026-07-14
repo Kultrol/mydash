@@ -11,11 +11,11 @@
 
 **mydash** is a friendly command-line daily brief for Python folks who live in the terminal. It pulls live data from public APIs and paints it with Rich so your morning check-in feels quick and clear.
 
-> **v0.5.0 is an MVP demo** — not a polished 1.0 product. One command (`brief`), three panels, and a clean three-layer layout (**CLI → services → clients**) you can install and try. City, news category, and stock symbols are still hardcoded on purpose.
+> **Still an MVP** — not a polished 1.0 product. You get a daily **`brief`**, user **`set`** preferences, and a clean three-layer layout (**CLI → services → clients**). Defaults ship out of the box; personalize city, symbols, news category, units, and providers with `mydash set`.
 
 ---
 
-## ✨ Demo (v0.5.0 MVP)
+## ✨ Demo
 
 Fire it up:
 
@@ -36,10 +36,8 @@ You’ll get three full-width panels:
 | Panel | What you see |
 |-------|----------------|
 | 📈 **Markets** | Quotes & bars with `$`, ↑/↓ markers, and “As of” times |
-| 🌤️ **Weather** | Next six hours for the configured city |
+| 🌤️ **Weather** | Next six hours for your configured city (metric or imperial) |
 | 📰 **Headlines** | A short list; source names are clickable links in supported terminals |
-
-> ⚠️ **MVP honesty:** city, news category, and stock symbols are still hardcoded. The only command today is `brief` — and that’s intentional for a focused demo.
 
 ---
 
@@ -127,9 +125,30 @@ If you skip Alpaca keys, you can still run `mydash brief`; weather and headlines
 mydash brief
 mydash --help
 
+# Preferences (persisted as JSON via platformdirs)
+mydash set                 # hint: use --help or -lo
+mydash set -lo             # list all set subcommands
+mydash set weather units imperial
+mydash set weather city "Austin"
+mydash set stocks add GOOG
+mydash set news category politics
+mydash set show            # dump current config
+
 # Same thing via the module path
 python -m mydash.cli.main brief
 ```
+
+### User config file
+
+Preferences live in a platform-appropriate user config directory (via [platformdirs](https://platformdirs.readthedocs.io/)):
+
+| Platform | Typical path |
+|----------|----------------|
+| macOS | `~/Library/Application Support/mydash/config.json` |
+| Linux | `~/.config/mydash/config.json` (respects `XDG_CONFIG_HOME`) |
+| Windows | `%APPDATA%\mydash\config.json` |
+
+The file is created automatically with defaults (Miami, tech news, SPY/AAPL/MSFT, metric units) on first use.
 
 ---
 
@@ -139,6 +158,8 @@ python -m mydash.cli.main brief
 |---------|-------------|
 | `mydash: command not found` | Activate your venv, or reinstall (`pip install …` / `uv sync`) so the `mydash` entry point is on `PATH` |
 | Markets panel empty or errors | Confirm `.env` has both Alpaca vars, keys are valid, and you started the app from a directory that can see that `.env` |
+| Wrong city / symbols / units | Run `mydash set show`, then `mydash set weather city …`, `mydash set stocks add …`, or `mydash set weather units …` |
+| Config JSON errors | Delete or fix the config file path above; mydash recreates defaults if the file is missing |
 | Wrong Python version | Use **3.12+** (`python --version`) |
 | Network / API errors | Check connectivity; Open-Meteo and Noozra need outbound HTTPS |
 
@@ -151,15 +172,15 @@ Three layers, one way traffic:
 ```mermaid
 flowchart LR
     CLI["cli/ Typer + Rich"]
-    SVC["services/ BriefService"]
+    SVC["services/ Brief + UserConfig"]
     DATA["client/ providers"]
     CLI --> SVC --> DATA
 ```
 
 | Layer | Role |
 |-------|------|
-| 🎨 **Presentation** | `cli/` — commands and Rich panels |
-| ⚙️ **Orchestration** | `services/` — `BriefService` + `DailyBrief` |
+| 🎨 **Presentation** | `cli/` — `brief`, `set`, Rich panels |
+| ⚙️ **Orchestration** | `services/` — `BriefService`, domain services, `UserConfigurationService` |
 | 🔌 **Data** | `client/` — factories, protocols, HTTP providers |
 | 📦 **Models** | `models/` — shared Pydantic domain types |
 
@@ -175,6 +196,7 @@ Want the deeper map? See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | 🌈 Terminal UI | [Rich](https://rich.readthedocs.io/) |
 | 🌍 HTTP | [httpx](https://www.python-httpx.org/) |
 | 📐 Schemas | [Pydantic](https://docs.pydantic.dev/) |
+| 📁 Config path | [platformdirs](https://platformdirs.readthedocs.io/) |
 | 🔐 Secrets | python-dotenv |
 | 🧰 Tooling | [uv](https://docs.astral.sh/uv/) + hatchling |
 
@@ -187,23 +209,22 @@ uv sync --group dev
 uv run pytest
 ```
 
-Tests cover clients (providers + factories), brief service orchestration, and a CLI smoke path for `brief`.
+Tests cover clients (providers + factories), services (brief + user config), and CLI paths for `brief` and `set`.
 
 ---
 
 ## 🔭 Looking ahead
 
-**Today (v0.5.0)** is a working MVP demo: one `brief` command, three panels, and a clean three-layer layout you can install and run.
+**Today** is a working MVP: daily `brief`, user `set` preferences, three panels, and a clean three-layer layout you can install and run.
 
 **Version 1.0** means a production-ready *terminal* app you can rely on day to day — still not a website. Web and other interfaces can reuse the same service layer later.
 
 ### Path to 1.0
 
-- 🧭 **Config & personalization** — choose your city, news category, and stock symbols via a settings file and/or command-line flags instead of hardcodes in the service layer  
-- ⌨️ **CLI polish** — clearer help and error messages; flags to override defaults for a single run; optional focused commands (weather / news / stocks) that go through the service layer, not raw client calls  
-- 🔌 **Solid data layer** — fix remaining edge cases in clients (for example forecast day grouping and how cached results are replaced on a new fetch), consistent request timeouts so calls don’t hang forever, and cleaner shared HTTP plumbing where it still duplicates  
-- 🧪 **Tests & automation** — refactor the suite with shared fixtures and less duplicated setup, then add automated checks on every push and enough coverage that refactors stay safe  
-- 📚 **Docs for a stable release** — keep [CHANGELOG](CHANGELOG.md) current, install notes that match real behavior, and a command surface that feels intentional for daily use  
+- ⌨️ **CLI polish** — flags to override prefs for a single run; optional focused commands (weather / news / stocks) through the service layer  
+- 🔌 **Solid data layer** — fix remaining edge cases in clients, consistent request timeouts, cleaner shared HTTP plumbing  
+- 🧪 **Tests & automation** — shared fixtures, CI on every push, enough coverage that refactors stay safe  
+- 📚 **Docs for a stable release** — keep [CHANGELOG](CHANGELOG.md) current and a command surface that feels intentional for daily use  
 
 ### After 1.0
 

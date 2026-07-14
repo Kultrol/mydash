@@ -5,6 +5,19 @@ All notable changes to **mydash** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `UserConfigurationService` and `UserConfig` with JSON persistence via platformdirs
+- `mydash set` command tree (weather, stocks, news, geocoding, show) with Rich panels and next-step hints
+- Weather forecast unit presets (`metric` | `imperial`) end-to-end (Open-Meteo params + brief display)
+- Brief reads city, symbols, news category, units, and providers from user config
+
+### Changed
+
+- Docs (README, architecture) describe configurable prefs instead of hardcoded-only MVP notes
+
 ## [0.5.0] — 2026-07-13
 
 ### MVP release
