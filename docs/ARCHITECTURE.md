@@ -44,7 +44,14 @@ src/mydash/
   cli/
     main.py              # bootstrap: load_dotenv, Typer app
     commands/
-      set_cmd.py         # mydash set tree (weather, stocks, news, geocoding, show)
+      set/               # mydash set (one file per domain — Typer multi-module)
+        __init__.py      # set_app assembly + root callback
+        _helpers.py      # Rich panels / shared helpers
+        weather.py
+        stocks.py
+        news.py
+        geocoding.py
+        show.py
     renderers/
       brief.py           # stacked Markets / Weather / Headlines panels
   services/
