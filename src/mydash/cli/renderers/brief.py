@@ -36,6 +36,8 @@ BORDER_HEADLINES = "bright_blue"
 
 TEMP_HOT_C = 29.0
 TEMP_COLD_C = 10.0
+TEMP_HOT_F = 84.0
+TEMP_COLD_F = 50.0
 RAIN_WET = 60
 RAIN_DRIZZLE = 30
 
@@ -143,6 +145,8 @@ def _weather_panel(brief: DailyBrief) -> Panel:
     table.add_column("Feels", justify="right")
     table.add_column("Rain", justify="right")
 
+    units = brief.weather_units
+
     if not hours:
         body: Table | Text = Text(
             "No forecast data right now", style="italic bright_white"
@@ -152,15 +156,16 @@ def _weather_panel(brief: DailyBrief) -> Panel:
             table.add_row(
                 f"{month:02d}/{day:02d} {hour.hour:02d}:00",
                 _weather_emoji(hour.weather_code),
-                _temp_text(hour.temperature),
-                _temp_text(hour.feels_like_temperature),
+                _temp_text(hour.temperature, units=units),
+                _temp_text(hour.feels_like_temperature, units=units),
                 _rain_text(hour.chance_of_rain),
             )
         body = table
 
+    unit_label = "°F" if units == "imperial" else "°C"
     return Panel(
         body,
-        title=f"🌤️  Weather · {brief.city}",
+        title=f"🌤️  Weather · {brief.city} · {unit_label}",
         border_style=BORDER_WEATHER,
         title_align="left",
     )
@@ -187,14 +192,19 @@ def _next_hours(
     return upcoming[:n] if upcoming else flat[:n]
 
 
-def _temp_text(temp: float) -> Text:
-    if temp >= TEMP_HOT_C:
+def _temp_text(temp: float, units: str = "metric") -> Text:
+    if units == "imperial":
+        hot, cold, suffix = TEMP_HOT_F, TEMP_COLD_F, "°F"
+    else:
+        hot, cold, suffix = TEMP_HOT_C, TEMP_COLD_C, "°C"
+
+    if temp >= hot:
         style = "bold bright_yellow"
-    elif temp <= TEMP_COLD_C:
+    elif temp <= cold:
         style = "bold bright_cyan"
     else:
         style = "bright_white"
-    return Text(f"{temp:.1f}°", style=style)
+    return Text(f"{temp:.1f}{suffix}", style=style)
 
 
 def _rain_text(chance: int) -> Text:

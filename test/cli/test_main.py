@@ -77,6 +77,7 @@ def _sample_brief() -> DailyBrief:
         city="Miami",
         news_category="politics",
         symbols=["SPY", "AAPL", "MSFT"],
+        weather_units="metric",
     )
 
 

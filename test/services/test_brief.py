@@ -1,15 +1,15 @@
 """Tests for BriefService orchestration.
 
-Strategy: mock client factories so no HTTP runs. Assert the service wires each
-domain pipeline and returns a DailyBrief with the expected pieces.
+Strategy: mock domain services and config so no HTTP runs. Assert the service
+wires preferences into each domain and returns a DailyBrief.
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from mydash.models.geocoding import Coordinates
 from mydash.models.news import HeadLine, NewsHeadlines
 from mydash.models.stocks import StockBar, StockBars, StockQuote, StockQuotes
 from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
@@ -20,6 +20,7 @@ from mydash.services.brief import (
     BriefService,
     DailyBrief,
 )
+from mydash.services.user_config import UserConfig, UserConfigurationService
 
 
 def _sample_weather() -> MultiDayForecast:
@@ -88,84 +89,94 @@ def _sample_bars() -> StockBars:
 
 
 @pytest.fixture
-def mock_clients(mocker):
-    """Patch all four factories used by BriefService."""
-    coords = Coordinates(latitude=25.76, longitude=-80.19)
+def config_service(tmp_path: Path) -> UserConfigurationService:
+    return UserConfigurationService(config_path=tmp_path / "config.json")
 
-    geo = MagicMock()
-    geo.get_coordinates.return_value = coords
 
-    weather = MagicMock()
-    weather.get_weather_forecast.return_value = _sample_weather()
-
-    news = MagicMock()
-    news.get_news_headlines.return_value = _sample_headlines()
-
-    stocks = MagicMock()
-    stocks.get_current_stock_quotes.return_value = _sample_quotes()
-    stocks.get_current_stock_bars.return_value = _sample_bars()
-
-    mocker.patch(
-        "mydash.services.brief.get_geocoding_client", return_value=geo
-    )
-    mocker.patch(
-        "mydash.services.brief.get_weather_client", return_value=weather
-    )
-    mocker.patch("mydash.services.brief.get_news_client", return_value=news)
-    mocker.patch(
-        "mydash.services.brief.get_stock_client", return_value=stocks
+def test_build_returns_daily_brief(config_service, mocker):
+    weather_svc = MagicMock()
+    weather_svc.fetch_today_weather_forecast.return_value = _sample_weather()
+    news_svc = MagicMock()
+    news_svc.fetch_news.return_value = _sample_headlines()
+    stocks_svc = MagicMock()
+    stocks_svc.fetch_stock_bars_and_quotes.return_value = (
+        _sample_quotes(),
+        _sample_bars(),
     )
 
-    return {
-        "geo": geo,
-        "weather": weather,
-        "news": news,
-        "stocks": stocks,
-        "coords": coords,
-    }
+    mocker.patch(
+        "mydash.services.brief.WeatherService", return_value=weather_svc
+    )
+    mocker.patch("mydash.services.brief.NewsService", return_value=news_svc)
+    mocker.patch(
+        "mydash.services.brief.StocksService", return_value=stocks_svc
+    )
 
-
-def test_build_returns_daily_brief(mock_clients):
-    result = BriefService().build()
+    result = BriefService().build(config_service=config_service)
 
     assert isinstance(result, DailyBrief)
     assert result.city == DEFAULT_CITY
     assert result.news_category == DEFAULT_NEWS_CATEGORY
     assert result.symbols == DEFAULT_SYMBOLS
+    assert result.weather_units == "metric"
     assert result.weather == _sample_weather()
     assert result.headlines == _sample_headlines()
     assert result.stock_quotes == _sample_quotes()
     assert result.stock_bars == _sample_bars()
 
 
-def test_build_runs_each_domain_pipeline(mock_clients):
-    BriefService().build()
-
-    geo = mock_clients["geo"]
-    weather = mock_clients["weather"]
-    news = mock_clients["news"]
-    stocks = mock_clients["stocks"]
-    coords = mock_clients["coords"]
-
-    geo.set_coordinates.assert_called_once_with(DEFAULT_CITY)
-    geo.get_coordinates.assert_called_once()
-
-    weather.set_coordinates.assert_called_once_with(coords)
-    weather.set_weather_forecast.assert_called_once_with(
-        forecast_length=1, backwardcast_length=1
+def test_build_uses_config_preferences(tmp_path: Path, mocker):
+    path = tmp_path / "config.json"
+    svc = UserConfigurationService(config_path=path)
+    svc.set_configuration(
+        UserConfig(
+            city="Austin",
+            news_category="politics",
+            stock_symbols=["TSLA", "NVDA"],
+            weather_units="imperial",
+            provider_weather="open-meteo",
+            provider_geocoding="open-meteo",
+            provider_news="noozra",
+            provider_stocks="alpaca",
+        )
     )
-    weather.get_weather_forecast.assert_called_once()
 
-    news.set_news_headlines.assert_called_once_with(
-        category=DEFAULT_NEWS_CATEGORY
+    weather_svc = MagicMock()
+    weather_svc.fetch_today_weather_forecast.return_value = _sample_weather()
+    news_svc = MagicMock()
+    news_svc.fetch_news.return_value = _sample_headlines()
+    stocks_svc = MagicMock()
+    stocks_svc.fetch_stock_bars_and_quotes.return_value = (
+        _sample_quotes(),
+        _sample_bars(),
     )
-    news.get_news_headlines.assert_called_once()
 
-    stocks.set_current_stock_quotes.assert_called_once_with(
-        symbols=DEFAULT_SYMBOLS
+    weather_cls = mocker.patch(
+        "mydash.services.brief.WeatherService", return_value=weather_svc
     )
-    stocks.get_current_stock_quotes.assert_called_once()
-    stocks.set_current_stock_bars.assert_called_once_with(
-        symbols=DEFAULT_SYMBOLS
+    news_cls = mocker.patch(
+        "mydash.services.brief.NewsService", return_value=news_svc
     )
-    stocks.get_current_stock_bars.assert_called_once()
+    stocks_cls = mocker.patch(
+        "mydash.services.brief.StocksService", return_value=stocks_svc
+    )
+
+    result = BriefService().build(config_service=svc)
+
+    weather_cls.assert_called_once_with(
+        weather_provider="open-meteo", geocoding_provider="open-meteo"
+    )
+    weather_svc.fetch_today_weather_forecast.assert_called_once_with(
+        city="Austin", units="imperial"
+    )
+    news_cls.assert_called_once_with(news_provider="noozra")
+    news_svc.fetch_news.assert_called_once_with(category="politics")
+    stocks_cls.assert_called_once_with(
+        stock_ticker_symbols=["TSLA", "NVDA"], stock_provider="alpaca"
+    )
+    stocks_svc.fetch_stock_bars_and_quotes.assert_called_once()
+
+    assert result.city == "Austin"
+    assert result.news_category == "politics"
+    assert result.symbols == ["TSLA", "NVDA"]
+    assert result.weather_units == "imperial"
