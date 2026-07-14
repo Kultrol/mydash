@@ -5,10 +5,12 @@ the provider; ``get_*`` methods return the cached result without making new requ
 """
 
 from abc import abstractmethod
-from typing import Protocol, runtime_checkable
+from typing import Literal, Protocol, runtime_checkable
 
 from mydash.models.geocoding import Coordinates
 from mydash.models.weather import MultiDayForecast
+
+WeatherUnits = Literal["metric", "imperial"]
 
 
 @runtime_checkable
@@ -38,11 +40,16 @@ class WeatherClient(Protocol):
 
     @abstractmethod
     def set_weather_forecast(
-        self, forecast_length: int, backwardcast_length: int
+        self,
+        forecast_length: int,
+        backwardcast_length: int,
+        units: WeatherUnits = "metric",
     ) -> None:
         """Fetch and cache an hourly forecast for the configured number of days.
 
         :param forecast_length: Number of forecast days to request from the provider.
+        :param backwardcast_length: Number of past days to include.
+        :param units: Unit preset — ``metric`` or ``imperial``.
         """
         ...
 

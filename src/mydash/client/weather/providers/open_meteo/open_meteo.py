@@ -21,7 +21,11 @@ from mydash.client.weather.providers.open_meteo.errors import (
     ParameterSettingError,
     ResponseError,
 )
-from mydash.client.weather.providers.open_meteo.schemas import Parameters
+from mydash.client.weather.providers.open_meteo.schemas import (
+    UNITS_PRESETS,
+    Parameters,
+    WeatherUnitsPreset,
+)
 from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
 
 
@@ -47,13 +51,26 @@ class OpenMeteoClient(WeatherClient):
             raise MissingCoordinatesError()
 
     def _validate_weather_forecast_params(
-        self, coordinates: Coordinates, forecast_length: int, backwardcast_length: int
+        self,
+        coordinates: Coordinates,
+        forecast_length: int,
+        backwardcast_length: int,
+        units: WeatherUnitsPreset = "metric",
     ) -> Parameters:
+        if units not in UNITS_PRESETS:
+            raise ValueError(
+                f"invalid weather units {units!r}; expected one of "
+                f"{sorted(UNITS_PRESETS)}"
+            )
+        unit_fields = UNITS_PRESETS[units]
         try:
             return Parameters(
                 coordinates=coordinates,
                 forecast_days=forecast_length,
                 past_days=backwardcast_length,
+                temperature_unit=unit_fields["temperature_unit"],  # type: ignore[arg-type]
+                wind_speed_unit=unit_fields["wind_speed_unit"],  # type: ignore[arg-type]
+                precipitation_unit=unit_fields["precipitation_unit"],  # type: ignore[arg-type]
             )
         except ValidationError as err:
             raise ParameterSettingError(validation_err=err)
@@ -62,12 +79,14 @@ class OpenMeteoClient(WeatherClient):
         self,
         forecast_length: int = 1,
         backwardcast_length: int = 1,
+        units: WeatherUnitsPreset = "metric",
     ) -> None:
 
         params = self._validate_weather_forecast_params(
             coordinates=self.get_coordinates(),
             forecast_length=forecast_length,
             backwardcast_length=backwardcast_length,
+            units=units,
         )
 
         weather_data = HttpApiClient().make_request(

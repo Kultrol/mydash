@@ -421,6 +421,11 @@ def test_get_weather_found_weather_return_weather_forecast(
 
     weather_forecast = weather_client.get_weather_forecast()
 
+    request_params = mock_api_response.call_args.kwargs["parameters"]
+    assert request_params["temperature_unit"] == "celsius"
+    assert request_params["wind_speed_unit"] == "kmh"
+    assert request_params["precipitation_unit"] == "mm"
+
     assert weather_forecast.days[0].day == expected_result.days[0].day
     assert weather_forecast.days[0].month == expected_result.days[0].month
     assert (
@@ -459,3 +464,37 @@ def test_get_weather_found_weather_return_weather_forecast(
         weather_forecast.days[0].hours[0].hour == expected_result.days[0].hours[0].hour
     )
     assert isinstance(weather_forecast, MultiDayForecast)
+
+
+def test_set_weather_forecast_imperial_units_in_request_params(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    weather_client = get_weather_client("open-meteo")
+    weather_client.set_coordinates(Coordinates(latitude=20, longitude=20))
+
+    mock_response = {
+        "hourly": {
+            "time": ["2026-07-08T00:00"],
+            "temperature_2m": [74.0],
+            "apparent_temperature": [72.0],
+            "precipitation_probability": [0],
+            "precipitation": [0],
+            "weather_code": [1],
+            "cloud_cover": [10],
+            "wind_speed_10m": [8.0],
+            "uv_index": [1.0],
+        }
+    }
+    mock_api_response = MagicMock(return_value=mock_response)
+    monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
+
+    weather_client.set_weather_forecast(
+        forecast_length=1,
+        backwardcast_length=0,
+        units="imperial",
+    )
+
+    request_params = mock_api_response.call_args.kwargs["parameters"]
+    assert request_params["temperature_unit"] == "fahrenheit"
+    assert request_params["wind_speed_unit"] == "mph"
+    assert request_params["precipitation_unit"] == "inch"
