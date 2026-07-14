@@ -1,4 +1,4 @@
-"""``mydash set show`` — dump current user configuration."""
+"""``mydash set show`` — dump the current user configuration as JSON."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from mydash.cli.commands.set._helpers import config_service, info
 
 
 def show() -> None:
-    """Print the current user configuration as JSON."""
+    """Print the on-disk user configuration inside a Rich info panel."""
     cfg = config_service().get_configuration()
     payload = cfg.model_dump(mode="json")
     body = Group(

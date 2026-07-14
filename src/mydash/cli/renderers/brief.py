@@ -34,6 +34,7 @@ BORDER_STOCKS = "bright_green"
 BORDER_WEATHER = "bright_yellow"
 BORDER_HEADLINES = "bright_blue"
 
+# Temperature color thresholds (aligned to metric / imperial presets).
 TEMP_HOT_C = 29.0
 TEMP_COLD_C = 10.0
 TEMP_HOT_F = 84.0
@@ -130,7 +131,7 @@ def _friendly_time(when: datetime) -> str:
 
 
 def _weather_panel(brief: DailyBrief) -> Panel:
-    """Next few hours of forecast for the brief city."""
+    """Next few hours of forecast for the brief city (unit-aware labels)."""
     hours = _next_hours(brief, n=WEATHER_HOURS)
 
     table = Table(
@@ -193,6 +194,7 @@ def _next_hours(
 
 
 def _temp_text(temp: float, units: str = "metric") -> Text:
+    """Format temperature with °C/°F and hot/cold styling for *units*."""
     if units == "imperial":
         hot, cold, suffix = TEMP_HOT_F, TEMP_COLD_F, "°F"
     else:

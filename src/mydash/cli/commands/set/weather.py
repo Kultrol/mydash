@@ -1,4 +1,8 @@
-"""``mydash set weather`` subcommands."""
+"""``mydash set weather`` — city, forecast units, and weather provider.
+
+Incomplete ``mydash set weather`` shows next-step hints; leaf commands
+update :class:`~mydash.services.user_config.UserConfigurationService`.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ app = typer.Typer(
 
 @app.callback(invoke_without_command=True)
 def weather_root(ctx: typer.Context) -> None:
-    """Weather preferences. Choose a subcommand."""
+    """If no leaf subcommand was given, print weather next-step hints and exit."""
     if ctx.invoked_subcommand is not None:
         return
     hint_panel(
@@ -49,6 +53,7 @@ def city(
         help="City name to geocode and store (updates city + coordinates).",
     ),
 ) -> None:
+    """Geocode and store the brief weather location."""
     city = require_arg(
         city,
         title="🌤️  set weather city",
@@ -89,6 +94,7 @@ def units(
         ),
     ),
 ) -> None:
+    """Set metric or imperial forecast units for the brief."""
     units = require_arg(
         units,
         title="🌤️  set weather units",
@@ -128,6 +134,7 @@ def provider(
         ),
     ),
 ) -> None:
+    """Set the weather API provider used by the brief."""
     provider = require_arg(
         provider,
         title="🌤️  set weather provider",

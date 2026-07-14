@@ -1,4 +1,4 @@
-"""``mydash set news`` subcommands."""
+"""``mydash set news`` — headline category and news provider."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ app = typer.Typer(
 
 @app.callback(invoke_without_command=True)
 def news_root(ctx: typer.Context) -> None:
-    """News preferences. Choose a subcommand."""
+    """If no leaf subcommand was given, print news next-step hints and exit."""
     if ctx.invoked_subcommand is not None:
         return
     hint_panel(
@@ -47,6 +47,7 @@ def category(
         help="News category to request (e.g. tech, politics).",
     ),
 ) -> None:
+    """Set the news category used for brief headlines."""
     category = require_arg(
         category,
         title="📰  set news category",
@@ -85,6 +86,7 @@ def provider(
         ),
     ),
 ) -> None:
+    """Set the news API provider used by the brief."""
     provider = require_arg(
         provider,
         title="📰  set news provider",

@@ -1,4 +1,10 @@
-"""``mydash set`` command tree — one module per domain (Typer multi-file layout)."""
+"""``mydash set`` command tree — Typer one-file-per-command layout.
+
+Domain modules each expose a :class:`typer.Typer` ``app`` that is registered
+here with :meth:`add_typer`. Leaf ``show`` is registered as a command on this
+root app. Incomplete paths (bare ``set`` / missing args) print Rich hint panels
+instead of raw Click errors.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +37,10 @@ def set_root(
         help="List all set subcommands with domain grouping.",
     ),
 ) -> None:
-    """Configure mydash preferences. Use a subcommand or --list-options."""
+    """Root of ``mydash set``: list options, or guide when no subcommand given.
+
+    :param list_options: When true, print the full subcommand catalog and exit.
+    """
     if list_options:
         print_set_options()
         raise typer.Exit(0)

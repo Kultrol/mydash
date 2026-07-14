@@ -57,6 +57,12 @@ class OpenMeteoClient(WeatherClient):
         backwardcast_length: int,
         units: WeatherUnitsPreset = "metric",
     ) -> Parameters:
+        """Build validated :class:`Parameters`, including unit preset mapping.
+
+        :param units: ``metric`` or ``imperial`` → temperature/wind/precip fields.
+        :raises ValueError: If *units* is not a known preset.
+        :raises ParameterSettingError: If pydantic validation fails.
+        """
         if units not in UNITS_PRESETS:
             raise ValueError(
                 f"invalid weather units {units!r}; expected one of "
@@ -81,7 +87,12 @@ class OpenMeteoClient(WeatherClient):
         backwardcast_length: int = 1,
         units: WeatherUnitsPreset = "metric",
     ) -> None:
+        """Fetch and cache an hourly forecast, applying the unit preset.
 
+        :param forecast_length: Forward days to request from Open-Meteo.
+        :param backwardcast_length: Past days to include.
+        :param units: ``metric`` (default) or ``imperial``.
+        """
         params = self._validate_weather_forecast_params(
             coordinates=self.get_coordinates(),
             forecast_length=forecast_length,

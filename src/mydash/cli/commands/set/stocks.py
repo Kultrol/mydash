@@ -1,4 +1,4 @@
-"""``mydash set stocks`` subcommands."""
+"""``mydash set stocks`` — watch-list symbols and market data provider."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ app = typer.Typer(
 
 @app.callback(invoke_without_command=True)
 def stocks_root(ctx: typer.Context) -> None:
-    """Stocks preferences. Choose a subcommand."""
+    """If no leaf subcommand was given, print stocks next-step hints and exit."""
     if ctx.invoked_subcommand is not None:
         return
     hint_panel(
@@ -49,6 +49,7 @@ def add(
         help="Ticker symbol to add (case-insensitive; stored uppercase).",
     ),
 ) -> None:
+    """Add a ticker symbol to the brief markets panel."""
     symbol = require_arg(
         symbol,
         title="📈  set stocks add",
@@ -84,6 +85,7 @@ def remove(
         help="Ticker symbol to remove (case-insensitive).",
     ),
 ) -> None:
+    """Remove a ticker symbol from the brief markets panel."""
     symbol = require_arg(
         symbol,
         title="📈  set stocks remove",
@@ -121,6 +123,7 @@ def provider(
         ),
     ),
 ) -> None:
+    """Set the market data API provider used by the brief."""
     provider = require_arg(
         provider,
         title="📈  set stocks provider",

@@ -1,4 +1,8 @@
-"""CLI entry point for mydash (Typer + Rich)."""
+"""CLI entry point for mydash (Typer + Rich).
+
+Registers top-level commands: ``brief`` (daily dashboard) and ``set``
+(user preferences under ``cli.commands.set``).
+"""
 
 import typer
 from dotenv import load_dotenv
@@ -16,6 +20,7 @@ app = typer.Typer(help="mydash — personal daily dashboard in the terminal.")
 
 load_dotenv()
 
+# Preference subcommands: mydash set weather|stocks|news|geocoding|show
 app.add_typer(set_app, name="set")
 
 
@@ -26,7 +31,7 @@ def main() -> None:
 
 @app.command("brief")
 def brief():
-    """Build and display the daily brief."""
+    """Build and display the daily brief using saved user preferences."""
     brief_data = BriefService().build()
     render_brief(console, brief_data)
 

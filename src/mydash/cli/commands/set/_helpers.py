@@ -1,4 +1,9 @@
-"""Shared Rich panels and helpers for ``mydash set`` subcommands."""
+"""Shared Rich panels and helpers for ``mydash set`` subcommands.
+
+Domain modules call these for consistent success / error / guidance UX.
+Incomplete paths use :func:`require_arg` (exit 0 + info panel); failed
+mutations use :func:`run` (exit 1 + error panel).
+"""
 
 from __future__ import annotations
 
@@ -14,6 +19,7 @@ from mydash.services.user_config import UserConfigurationService
 
 console = Console()
 
+# Static catalog for ``mydash set -lo`` (emoji, relative usage string).
 SET_OPTIONS: list[tuple[str, str]] = [
     ("🌤️", "weather city <city>"),
     ("🌤️", "weather units <metric|imperial>"),
@@ -29,10 +35,16 @@ SET_OPTIONS: list[tuple[str, str]] = [
 
 
 def fmt_choices(values: frozenset[str]) -> str:
+    """Join allowed values sorted for help text and panels."""
     return ", ".join(sorted(values))
 
 
 def config_service() -> UserConfigurationService:
+    """Construct the default user-config service (platform config path).
+
+    Tests patch :class:`UserConfigurationService` on this module so all
+    set subcommands share one mock site.
+    """
     return UserConfigurationService()
 
 
@@ -42,6 +54,7 @@ def panel(
     title: str,
     border_style: str,
 ) -> None:
+    """Print a Rich panel with shared padding and left-aligned title."""
     console.print(
         Panel(
             body,
@@ -54,10 +67,12 @@ def panel(
 
 
 def success(message: str, *, title: str = "✅ Success") -> None:
+    """Green panel for a completed preference change (markup allowed)."""
     panel(Text.from_markup(message), title=title, border_style="bright_green")
 
 
 def error(message: str) -> None:
+    """Red panel for validation or provider failures."""
     panel(
         Text.from_markup(f"[bright_white]{message}[/bright_white]"),
         title="❌ Error",
@@ -66,6 +81,7 @@ def error(message: str) -> None:
 
 
 def info(body: Any, *, title: str = "ℹ️  Info") -> None:
+    """Cyan panel for guidance, options lists, and config dumps."""
     panel(body, title=title, border_style="bright_cyan")
 
 
@@ -109,7 +125,11 @@ def require_arg(
     available: str | None = None,
     tip: str | None = None,
 ) -> str:
-    """Return *value* or print a hint panel and exit if it is missing."""
+    """Return *value*, or print a hint panel and exit 0 if it is missing.
+
+    Used so ``mydash set weather provider`` guides the user instead of
+    Click's default “Missing argument” error.
+    """
     if value is None or not str(value).strip():
         hint_panel(
             title=title,
@@ -129,7 +149,12 @@ def run(
     success_message: Callable[[], str],
     success_title: str,
 ) -> None:
-    """Run *action*; show an error panel on failure or a success panel on success."""
+    """Run *action*; error panel + exit 1 on failure, success panel otherwise.
+
+    :param action: Side-effecting callable (usually a config service mutator).
+    :param success_message: Called after success to build panel body markup.
+    :param success_title: Panel title (often domain emoji + action name).
+    """
     try:
         action()
     except Exception as exc:
@@ -139,6 +164,7 @@ def run(
 
 
 def print_set_options() -> None:
+    """Render the ``-lo`` / ``--list-options`` catalog panel."""
     lines = Text()
     lines.append("Available subcommands:\n\n", style="bold bright_white")
     for emoji, option in SET_OPTIONS:

@@ -1,4 +1,8 @@
-"""Tests for UserConfigurationService."""
+"""Tests for UserConfigurationService.
+
+Strategy: use tmp_path config files (never real platformdirs paths); mock
+geocoding for set_city. Cover create/load, validation, symbols, providers.
+"""
 
 from pathlib import Path
 from unittest.mock import MagicMock

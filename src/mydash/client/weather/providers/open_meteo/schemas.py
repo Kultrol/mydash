@@ -1,3 +1,10 @@
+"""Open-Meteo Forecast API query parameter models.
+
+Maps domain inputs (coordinates, day ranges, unit presets) to the query
+dict accepted by ``HttpApiClient.make_request``. Unit presets follow
+Open-Meteo docs: temperature, wind speed, and precipitation together.
+"""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -31,6 +38,7 @@ DEFAULT_HOURLY: list[HourlyVariable] = [
     "uv_index",
 ]
 
+# High-level presets → Open-Meteo temperature / wind / precipitation query params.
 UNITS_PRESETS: dict[WeatherUnitsPreset, dict[str, str]] = {
     "metric": {
         "temperature_unit": "celsius",
@@ -46,6 +54,8 @@ UNITS_PRESETS: dict[WeatherUnitsPreset, dict[str, str]] = {
 
 
 class Parameters(BaseModel):
+    """Validated Open-Meteo forecast query parameters."""
+
     coordinates: Coordinates
     hourly: list[HourlyVariable] = Field(default_factory=lambda: list(DEFAULT_HOURLY))
     past_days: int = Field(default=1, ge=0, le=3)
@@ -55,6 +65,7 @@ class Parameters(BaseModel):
     precipitation_unit: PrecipitationUnit = "mm"
 
     def to_params(self) -> dict[str, Any]:
+        """Build the flat query-parameter dict for the HTTP client."""
         return {
             "latitude": self.coordinates.latitude,
             "longitude": self.coordinates.longitude,

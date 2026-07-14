@@ -1,4 +1,9 @@
-"""Brief orchestration: compose weather, news, and stocks into one DTO."""
+"""Brief orchestration: compose weather, news, and stocks into one DTO.
+
+Preferences (city, symbols, category, units, providers) come from
+:class:`~mydash.services.user_config.UserConfigurationService` so the CLI
+``set`` command and the brief stay in sync.
+"""
 
 from typing import Literal
 
@@ -20,7 +25,7 @@ from mydash.services.weather import WeatherService
 
 WeatherUnits = Literal["metric", "imperial"]
 
-# Re-export defaults for callers/tests that previously imported from brief.
+# Re-export defaults for callers/tests that previously imported them from brief.
 __all__ = [
     "DEFAULT_CITY",
     "DEFAULT_NEWS_CATEGORY",
@@ -32,7 +37,11 @@ __all__ = [
 
 
 class DailyBrief(BaseModel):
-    """Aggregated snapshot for the daily brief command."""
+    """Aggregated snapshot for the daily brief command and Rich renderer.
+
+    ``weather_units`` records the preset used when fetching weather so the
+    renderer can show °C/°F and matching temperature thresholds.
+    """
 
     headlines: NewsHeadlines
     stock_quotes: StockQuotes
@@ -50,7 +59,12 @@ class BriefService:
     def build(
         self, config_service: UserConfigurationService | None = None
     ) -> DailyBrief:
-        """Fetch weather, news, and stocks; return one composed brief."""
+        """Fetch weather, news, and stocks using saved user preferences.
+
+        :param config_service: Optional config instance (tests inject a temp
+            path). When omitted, loads the platform user config file.
+        :returns: Composed brief DTO for the renderer.
+        """
         cfg_svc = config_service or UserConfigurationService()
         cfg = cfg_svc.get_configuration()
 

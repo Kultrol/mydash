@@ -1,4 +1,4 @@
-"""``mydash set geocoding`` subcommands."""
+"""``mydash set geocoding`` — geocoding provider for city resolution."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ app = typer.Typer(
 
 @app.callback(invoke_without_command=True)
 def geocoding_root(ctx: typer.Context) -> None:
-    """Geocoding preferences. Choose a subcommand."""
+    """If no leaf subcommand was given, print geocoding next-step hints and exit."""
     if ctx.invoked_subcommand is not None:
         return
     hint_panel(
@@ -48,6 +48,7 @@ def provider(
         ),
     ),
 ) -> None:
+    """Set the geocoding API provider used when resolving cities."""
     provider = require_arg(
         provider,
         title="📍  set geocoding provider",

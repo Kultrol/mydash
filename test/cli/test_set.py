@@ -1,4 +1,9 @@
-"""Tests for mydash set CLI commands."""
+"""Tests for mydash set CLI commands.
+
+Strategy: CliRunner against the root Typer app; patch
+``mydash.cli.commands.set._helpers.UserConfigurationService`` so commands
+write under tmp_path. Cover bare set, -lo, incomplete paths, and happy paths.
+"""
 
 from pathlib import Path
 from unittest.mock import MagicMock

@@ -1,3 +1,5 @@
+"""Weather orchestration: geocode a city, then fetch today's forecast."""
+
 from typing import Literal
 
 from mydash.client.geocoding.base import GeocodingClient
@@ -11,13 +13,18 @@ WeatherUnits = Literal["metric", "imperial"]
 
 
 class WeatherService:
-    """Weather Service that orchestrates weather related logic and returns expected weather models."""
+    """Orchestrate geocoding + weather clients into domain forecast models."""
 
     def __init__(
         self,
         weather_provider: str = "open-meteo",
         geocoding_provider: str = "open-meteo",
     ):
+        """Build clients for the given provider names.
+
+        :param weather_provider: Weather factory key (e.g. ``open-meteo``).
+        :param geocoding_provider: Geocoding factory key (e.g. ``open-meteo``).
+        """
         self.weather_client: WeatherClient = get_weather_client(
             provider=weather_provider
         )
@@ -30,6 +37,14 @@ class WeatherService:
         city: str,
         units: WeatherUnits = "metric",
     ) -> MultiDayForecast:
+        """Resolve *city* to coordinates and return a one-day hourly forecast.
+
+        Flow: geocode → set weather coordinates → fetch forecast with *units*.
+
+        :param city: Place name for the geocoding client.
+        :param units: ``metric`` or ``imperial`` (passed through to the provider).
+        :returns: Parsed multi-day container (typically one calendar day).
+        """
         self.geocoding_client.set_coordinates(city=city)
         coordinates: Coordinates = self.geocoding_client.get_coordinates()
         self.weather_client.set_coordinates(coordinates=coordinates)
