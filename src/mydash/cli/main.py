@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.traceback import install
 
-from mydash.cli.commands.set_cmd import set_app
+from mydash.cli.commands.set import set_app
 from mydash.cli.renderers.brief import render_brief
 from mydash.services.brief import BriefService
 

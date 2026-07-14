@@ -35,7 +35,7 @@ def test_set_list_options_short_and_long():
 def test_set_weather_units(tmp_path: Path, mocker):
     path = tmp_path / "config.json"
     mocker.patch(
-        "mydash.cli.commands.set_cmd.UserConfigurationService",
+        "mydash.cli.commands.set._helpers.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(config_path=path),
     )
 
@@ -51,7 +51,7 @@ def test_set_weather_units(tmp_path: Path, mocker):
 def test_set_stocks_add_and_news_category(tmp_path: Path, mocker):
     path = tmp_path / "config.json"
     mocker.patch(
-        "mydash.cli.commands.set_cmd.UserConfigurationService",
+        "mydash.cli.commands.set._helpers.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(config_path=path),
     )
 
@@ -77,7 +77,7 @@ def test_set_weather_city(tmp_path: Path, mocker):
         "mydash.services.user_config.get_geocoding_client", return_value=geo
     )
     mocker.patch(
-        "mydash.cli.commands.set_cmd.UserConfigurationService",
+        "mydash.cli.commands.set._helpers.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(config_path=path),
     )
 
@@ -94,7 +94,7 @@ def test_set_show(tmp_path: Path, mocker):
     path = tmp_path / "config.json"
     UserConfigurationService(config_path=path)
     mocker.patch(
-        "mydash.cli.commands.set_cmd.UserConfigurationService",
+        "mydash.cli.commands.set._helpers.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(config_path=path),
     )
 
@@ -108,7 +108,7 @@ def test_set_show(tmp_path: Path, mocker):
 def test_set_invalid_units_exits_nonzero(tmp_path: Path, mocker):
     path = tmp_path / "config.json"
     mocker.patch(
-        "mydash.cli.commands.set_cmd.UserConfigurationService",
+        "mydash.cli.commands.set._helpers.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(config_path=path),
     )
 
