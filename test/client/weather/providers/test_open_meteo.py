@@ -1,6 +1,8 @@
 """Tests for mydash.client.weather.open_meteo."""
 
-from unittest.mock import MagicMock
+import asyncio
+
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -162,9 +164,11 @@ def test_set_weather_forecast_bad_parameter_values_raise_parameter_setting_error
     weather_client = get_weather_client()
     weather_client.set_coordinates(mock_coordinates)
     with pytest.raises(expected_error) as err:
-        weather_client.set_weather_forecast(
+        asyncio.run(
+            weather_client.set_weather_forecast(
             forecast_length=mock_forecast_length,
             backwardcast_length=mock_backwardcast_length,
+            )
         )
     assert isinstance(err.value, expected_error)
 
@@ -225,13 +229,15 @@ def test_set_weather_forecast_bad_api_response_raise_response_error(
     weather_client = get_weather_client()
     weather_client.set_coordinates(mock_coordinates)
 
-    mock_api_response = MagicMock(return_value=mock_response)
+    mock_api_response = AsyncMock(return_value=mock_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
 
     with pytest.raises(expected_error) as err:
-        weather_client.set_weather_forecast(
+        asyncio.run(
+            weather_client.set_weather_forecast(
             forecast_length=mock_forecast_length,
             backwardcast_length=mock_backwardcast_length,
+            )
         )
     assert isinstance(err.value, expected_error)
 
@@ -329,13 +335,15 @@ def test_set_weather_forecast_hour_forecast_validation_failure_raise_hour_foreca
     weather_client = get_weather_client()
     weather_client.set_coordinates(mock_coordinates)
 
-    mock_api_response = MagicMock(return_value=mock_response)
+    mock_api_response = AsyncMock(return_value=mock_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
 
     with pytest.raises(expected_error) as err:
-        weather_client.set_weather_forecast(
+        asyncio.run(
+            weather_client.set_weather_forecast(
             forecast_length=mock_forecast_length,
             backwardcast_length=mock_backwardcast_length,
+            )
         )
     assert isinstance(err.value, expected_error)
 
@@ -411,12 +419,14 @@ def test_get_weather_found_weather_return_weather_forecast(
 
     weather_client.set_coordinates(mock_coordinates)
 
-    mock_api_response = MagicMock(return_value=mock_response)
+    mock_api_response = AsyncMock(return_value=mock_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
 
-    weather_client.set_weather_forecast(
+    asyncio.run(
+        weather_client.set_weather_forecast(
         forecast_length=mock_forecast_length,
         backwardcast_length=mock_backwardcast_length,
+        )
     )
 
     weather_forecast = weather_client.get_weather_forecast()
@@ -485,13 +495,15 @@ def test_set_weather_forecast_imperial_units_in_request_params(
             "uv_index": [1.0],
         }
     }
-    mock_api_response = MagicMock(return_value=mock_response)
+    mock_api_response = AsyncMock(return_value=mock_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
 
-    weather_client.set_weather_forecast(
+    asyncio.run(
+        weather_client.set_weather_forecast(
         forecast_length=1,
         backwardcast_length=0,
         units="imperial",
+        )
     )
 
     request_params = mock_api_response.call_args.kwargs["parameters"]

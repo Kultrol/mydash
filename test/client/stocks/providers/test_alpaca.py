@@ -1,6 +1,8 @@
 """Tests for mydash.client.stocks.alpaca."""
 
-from unittest.mock import MagicMock
+import asyncio
+
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -38,7 +40,7 @@ def test_set_current_stock_bars_bad_params_raise_parameter_setting_error(
 ):
     stock_client = get_stock_client()
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_bars(symbols=mock_bad_symbols)
+        asyncio.run(stock_client.set_current_stock_bars(symbols=mock_bad_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -67,7 +69,7 @@ def test_set_current_stock_bars_missing_env_vars_raise_header_validation_error(
     monkeypatch.delenv(name=mock_api_secret, raising=False)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_bars(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_bars(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -121,12 +123,12 @@ def test_set_current_stock_bars_missing_bars_key_raise_response_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_bars(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_bars(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -226,12 +228,12 @@ def test_set_current_stock_bars_missing_ticker_key_raise_response_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_bars(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_bars(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -382,12 +384,12 @@ def test_set_current_stock_bars_missing_bar_keys_raise_response_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_bars(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_bars(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -495,12 +497,12 @@ def test_set_current_stock_bars_validation_failure_raise_stock_bars_setting_erro
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_bars(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_bars(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -566,10 +568,10 @@ def test_get_current_stock_bars_found_stock_bars_return_stock_bars(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
-    stock_client.set_current_stock_bars(symbols=mock_symbols)
+    asyncio.run(stock_client.set_current_stock_bars(symbols=mock_symbols))
 
     result_current_bars = stock_client.get_current_stock_bars()
 
@@ -596,7 +598,7 @@ def test_set_current_stock_quotes_bad_params_raise_parameter_setting_error(
 ):
     stock_client = get_stock_client()
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_quotes(symbols=mock_bad_symbols)
+        asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_bad_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -625,7 +627,7 @@ def test_set_current_stock_quotes_missing_env_vars_raise_header_validation_error
     monkeypatch.delenv(name=mock_api_secret, raising=False)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_quotes(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -677,12 +679,12 @@ def test_set_current_stock_quotes_missing_quotes_key_raise_response_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_quotes(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -782,12 +784,12 @@ def test_set_current_stock_quotes_missing_ticker_key_raise_response_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_quotes(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -938,12 +940,12 @@ def test_set_current_stock_quotes_missing_quote_keys_raise_response_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_quotes(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -1049,12 +1051,12 @@ def test_set_current_quotes_validation_failure_raise_stock_quotes_setting_error(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        stock_client.set_current_stock_quotes(symbols=mock_symbols)
+        asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_symbols))
     assert isinstance(err.value, expected_error)
 
 
@@ -1117,10 +1119,10 @@ def test_get_current_stock_quotes_found_stock_quotes_return_stock_quotes(
 
     stock_client = get_stock_client("alpaca")
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
-    stock_client.set_current_stock_quotes(symbols=mock_symbols)
+    asyncio.run(stock_client.set_current_stock_quotes(symbols=mock_symbols))
 
     result_current_quotes = stock_client.get_current_stock_quotes()
 

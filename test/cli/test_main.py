@@ -4,7 +4,7 @@ Strategy: CliRunner for command smoke; mock services (not HTTP) for brief.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from typer.testing import CliRunner
 
@@ -85,7 +85,7 @@ def test_brief_command_uses_service_and_renderer(mocker):
     """brief should call BriefService.build and render_brief; no live HTTP."""
     sample = _sample_brief()
     mock_service = MagicMock()
-    mock_service.build.return_value = sample
+    mock_service.build = AsyncMock(return_value=sample)
 
     mocker.patch("mydash.cli.main.BriefService", return_value=mock_service)
     mock_render = mocker.patch("mydash.cli.main.render_brief")
@@ -93,7 +93,7 @@ def test_brief_command_uses_service_and_renderer(mocker):
     result = runner.invoke(app, ["brief"])
 
     assert result.exit_code == 0, result.output
-    mock_service.build.assert_called_once_with()
+    mock_service.build.assert_awaited_once_with()
     mock_render.assert_called_once()
     args, _kwargs = mock_render.call_args
     assert args[1] is sample

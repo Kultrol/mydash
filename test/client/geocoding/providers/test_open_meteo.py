@@ -1,6 +1,8 @@
 """Tests for mydash.client.geocoding.open_meteo."""
 
-from unittest.mock import MagicMock
+import asyncio
+
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -37,7 +39,7 @@ def test_set_coordinate_invalid_city_input_raise_parameter_setting_error(
 ):
     geocoding_client = get_geocoding_client()
     with pytest.raises(expected_error) as err:
-        geocoding_client.set_coordinates(mock_city)
+        asyncio.run(geocoding_client.set_coordinates(mock_city))
     assert isinstance(err.value, expected_error)
 
 
@@ -61,11 +63,11 @@ def test_set_coordinates_missing_coord_raise_city_not_found_error(
 ):
     geocoding_client = get_geocoding_client()
 
-    mock_response = MagicMock(return_value=mock_results)
+    mock_response = AsyncMock(return_value=mock_results)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_error) as err:
-        geocoding_client.set_coordinates(city=mock_city)
+        asyncio.run(geocoding_client.set_coordinates(city=mock_city))
     assert isinstance(err.value, expected_error)
 
 
@@ -92,11 +94,11 @@ def test_set_coordinates_received_malformed_data_raise_response_error(
 ):
     geocoding_client = get_geocoding_client()
 
-    mock_reponse = MagicMock(return_value=mock_results)
+    mock_reponse = AsyncMock(return_value=mock_results)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_reponse)
 
     with pytest.raises(expected_error) as err:
-        geocoding_client.set_coordinates(mock_city)
+        asyncio.run(geocoding_client.set_coordinates(mock_city))
     assert isinstance(err.value, expected_error)
 
 
@@ -134,13 +136,13 @@ def test_set_coordinates_valid_coordinates(
 ) -> None:
     geocoding_client = get_geocoding_client()
 
-    mock_make_request = MagicMock(
+    mock_make_request = AsyncMock(
         return_value={"results": [mock_coordinates.model_dump()]}
     )
 
     monkeypatch.setattr(HttpApiClient, "make_request", mock_make_request)
 
-    geocoding_client.set_coordinates(mock_city)
+    asyncio.run(geocoding_client.set_coordinates(mock_city))
 
     if geocoding_client.coordinates is not None:
         assert geocoding_client.coordinates.latitude == expected_coordinates.latitude
@@ -194,11 +196,11 @@ def test_set_coordinates_invalid_coordinates_raises_coordinates_setting_error(
 ) -> None:
     geocoding_client = get_geocoding_client()
 
-    mock_response = MagicMock(return_value={"results": [mock_bad_data]})
+    mock_response = AsyncMock(return_value={"results": [mock_bad_data]})
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
     with pytest.raises(expected_exception=CoordinatesSettingError) as err:
-        geocoding_client.set_coordinates(mock_city)
+        asyncio.run(geocoding_client.set_coordinates(mock_city))
     assert isinstance(err.value, expected_error)
 
 
@@ -215,13 +217,13 @@ def test_get_coordinates_valid_coordinates(
 ):
     geocoding_client = get_geocoding_client()
 
-    mock_make_request = MagicMock(
+    mock_make_request = AsyncMock(
         return_value={
             "results": [{"latitude": mock_latitude, "longitude": mock_longitude}]
         }
     )
     monkeypatch.setattr(HttpApiClient, "make_request", mock_make_request)
-    geocoding_client.set_coordinates(mock_city)
+    asyncio.run(geocoding_client.set_coordinates(mock_city))
 
     result_coordinates = geocoding_client.get_coordinates()
     assert result_coordinates.__class__.__name__ == "Coordinates"

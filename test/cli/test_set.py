@@ -6,7 +6,7 @@ write under tmp_path. Cover bare set, -lo, incomplete paths, and happy paths.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from typer.testing import CliRunner
 
@@ -77,6 +77,7 @@ def test_set_weather_city(tmp_path: Path, mocker):
     path = tmp_path / "config.json"
     coords = Coordinates(latitude=30.27, longitude=-97.74)
     geo = MagicMock()
+    geo.set_coordinates = AsyncMock()
     geo.get_coordinates.return_value = coords
     mocker.patch(
         "mydash.services.user_config.get_geocoding_client", return_value=geo

@@ -1,6 +1,8 @@
 """Tests for mydash.client.news.noozra."""
 
-from unittest.mock import MagicMock
+import asyncio
+
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -37,7 +39,7 @@ def test_set_news_headlines_bad_input_raise_parameter_setting_error(
 ):
     news_client: NewsClient = get_news_client()
     with pytest.raises(expected_exception=expected_error) as err:
-        news_client.set_news_headlines(category=mock_category)
+        asyncio.run(news_client.set_news_headlines(category=mock_category))
 
     assert isinstance(err.value, expected_error)
 
@@ -60,11 +62,11 @@ def test_set_news_headlines_bad_api_response_rasied_missing_articles_error(
 ):
     news_client = get_news_client()
 
-    mock_make_request = MagicMock(return_value=mock_response)
+    mock_make_request = AsyncMock(return_value=mock_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_make_request)
 
     with pytest.raises(expected_error) as err:
-        news_client.set_news_headlines(category="politics")
+        asyncio.run(news_client.set_news_headlines(category="politics"))
     assert isinstance(err.value, expected_error)
 
 
@@ -88,11 +90,11 @@ def test_set_news_headlines_failed_headline_validation(
 ):
     news_client = get_news_client()
 
-    mock_make_request = MagicMock(return_value=mock_response)
+    mock_make_request = AsyncMock(return_value=mock_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_make_request)
 
     with pytest.raises(expected_error) as err:
-        news_client.set_news_headlines(category="politics")
+        asyncio.run(news_client.set_news_headlines(category="politics"))
     assert isinstance(err.value, expected_error)
 
 
@@ -127,10 +129,10 @@ def test_get_news_headlines_valid_api_response_return_news_headlines(
 ):
     news_client = get_news_client()
 
-    mock_response = MagicMock(return_value=mock_api_response)
+    mock_response = AsyncMock(return_value=mock_api_response)
     monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
 
-    news_client.set_news_headlines(category=mock_params)
+    asyncio.run(news_client.set_news_headlines(category=mock_params))
 
     client_headlines = news_client.get_news_headlines()
 

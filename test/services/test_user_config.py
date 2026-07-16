@@ -4,8 +4,9 @@ Strategy: use tmp_path config files (never real platformdirs paths); mock
 geocoding for set_city. Cover create/load, validation, symbols, providers.
 """
 
+import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -147,15 +148,16 @@ def test_invalid_structure_raises_value_error(config_path: Path):
 def test_set_city_geocodes(config_path: Path, mocker):
     coords = Coordinates(latitude=40.71, longitude=-74.01)
     geo = MagicMock()
+    geo.set_coordinates = AsyncMock()
     geo.get_coordinates.return_value = coords
     mocker.patch(
         "mydash.services.user_config.get_geocoding_client", return_value=geo
     )
 
     svc = UserConfigurationService(config_path=config_path)
-    svc.set_city("New York")
+    asyncio.run(svc.set_city("New York"))
 
-    geo.set_coordinates.assert_called_once_with(city="New York")
+    geo.set_coordinates.assert_awaited_once_with(city="New York")
     assert svc.get_city() == "New York"
     assert svc.get_coordinates() == coords
 

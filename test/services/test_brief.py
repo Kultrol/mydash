@@ -4,9 +4,10 @@ Strategy: mock domain services and config so no HTTP runs. Assert the service
 wires preferences into each domain and returns a DailyBrief.
 """
 
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -95,13 +96,14 @@ def config_service(tmp_path: Path) -> UserConfigurationService:
 
 def test_build_returns_daily_brief(config_service, mocker):
     weather_svc = MagicMock()
-    weather_svc.fetch_today_weather_forecast.return_value = _sample_weather()
+    weather_svc.fetch_today_weather_forecast = AsyncMock(
+        return_value=_sample_weather()
+    )
     news_svc = MagicMock()
-    news_svc.fetch_news.return_value = _sample_headlines()
+    news_svc.fetch_news = AsyncMock(return_value=_sample_headlines())
     stocks_svc = MagicMock()
-    stocks_svc.fetch_stock_bars_and_quotes.return_value = (
-        _sample_quotes(),
-        _sample_bars(),
+    stocks_svc.fetch_stock_bars_and_quotes = AsyncMock(
+        return_value=(_sample_quotes(), _sample_bars())
     )
 
     mocker.patch(
@@ -112,7 +114,7 @@ def test_build_returns_daily_brief(config_service, mocker):
         "mydash.services.brief.StocksService", return_value=stocks_svc
     )
 
-    result = BriefService().build(config_service=config_service)
+    result = asyncio.run(BriefService().build(config_service=config_service))
 
     assert isinstance(result, DailyBrief)
     assert result.city == DEFAULT_CITY
@@ -142,13 +144,14 @@ def test_build_uses_config_preferences(tmp_path: Path, mocker):
     )
 
     weather_svc = MagicMock()
-    weather_svc.fetch_today_weather_forecast.return_value = _sample_weather()
+    weather_svc.fetch_today_weather_forecast = AsyncMock(
+        return_value=_sample_weather()
+    )
     news_svc = MagicMock()
-    news_svc.fetch_news.return_value = _sample_headlines()
+    news_svc.fetch_news = AsyncMock(return_value=_sample_headlines())
     stocks_svc = MagicMock()
-    stocks_svc.fetch_stock_bars_and_quotes.return_value = (
-        _sample_quotes(),
-        _sample_bars(),
+    stocks_svc.fetch_stock_bars_and_quotes = AsyncMock(
+        return_value=(_sample_quotes(), _sample_bars())
     )
 
     weather_cls = mocker.patch(
@@ -161,20 +164,20 @@ def test_build_uses_config_preferences(tmp_path: Path, mocker):
         "mydash.services.brief.StocksService", return_value=stocks_svc
     )
 
-    result = BriefService().build(config_service=svc)
+    result = asyncio.run(BriefService().build(config_service=svc))
 
     weather_cls.assert_called_once_with(
         weather_provider="open-meteo", geocoding_provider="open-meteo"
     )
-    weather_svc.fetch_today_weather_forecast.assert_called_once_with(
+    weather_svc.fetch_today_weather_forecast.assert_awaited_once_with(
         city="Austin", units="imperial"
     )
     news_cls.assert_called_once_with(news_provider="noozra")
-    news_svc.fetch_news.assert_called_once_with(category="politics")
+    news_svc.fetch_news.assert_awaited_once_with(category="politics")
     stocks_cls.assert_called_once_with(
         stock_ticker_symbols=["TSLA", "NVDA"], stock_provider="alpaca"
     )
-    stocks_svc.fetch_stock_bars_and_quotes.assert_called_once()
+    stocks_svc.fetch_stock_bars_and_quotes.assert_awaited_once()
 
     assert result.city == "Austin"
     assert result.news_category == "politics"
