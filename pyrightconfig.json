@@ -1,0 +1,10 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": [
+    "packages/mydash-core/src",
+    "packages/mydash-cli/src",
+    "packages/mydash-web/src"
+  ],
+  "pythonVersion": "3.12"
+}

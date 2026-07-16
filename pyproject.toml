@@ -1,23 +1,12 @@
 [project]
-name = "mydash"
+name = "mydash-workspace"
 version = "0.5.0"
-description = "Terminal daily dashboard: weather, news, and markets in one brief."
-readme = "README.md"
-authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
-license = { text = "MIT" }
-
+description = "Development workspace for mydash CLI and web packages."
 requires-python = ">=3.12"
 dependencies = [
-  "httpx>=0.28.1",
-  "platformdirs>=4.3.0",
-  "pydantic>=2.13.4",
-  "python-dotenv>=1.2.2",
-  "rich>=15.0.0",
-  "typer>=0.26.4",
+  "mydash",
+  "mydash-web",
 ]
-
-[project.scripts]
-mydash = "mydash.cli.main:app"
 
 [dependency-groups]
 dev = [
@@ -25,13 +14,20 @@ dev = [
   "pytest-mock>=3.15.1",
 ]
 
-[project.urls]
-Homepage = "https://github.com/Kultrol/mydash"
-Repository = "https://github.com/Kultrol/mydash"
+[tool.uv]
+package = false
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.uv.workspace]
+members = [
+  "packages/mydash-core",
+  "packages/mydash-cli",
+  "packages/mydash-web",
+]
+
+[tool.uv.sources]
+mydash-core = { workspace = true }
+mydash = { workspace = true }
+mydash-web = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
