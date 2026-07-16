@@ -12,7 +12,7 @@ from mydash.client.http_api.errors import (
 
 
 class HttpApiClient:
-    def make_request(
+    async def make_request(
         self,
         url: httpx.URL,
         request_method: str,
@@ -33,25 +33,25 @@ class HttpApiClient:
             ResponseDecodeError: if the response body is not valid JSON
             HttpApiError: for other httpx errors
         """
-        client: httpx.Client = httpx.Client(timeout=timeout)
         request = httpx.Request(
             method=request_method, url=url, headers=headers, params=parameters
         )
 
         try:
-            response = client.send(request=request)
-            response.raise_for_status()
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.send(request=request)
+                response.raise_for_status()
 
-            # Try to parse JSON — raise ResponseDecodeError if it fails
-            try:
-                return response.json()
-            except ValueError as err:
-                raise ResponseDecodeError(
-                    url=request.url,
-                    status_code=response.status_code,
-                    response_text=response.text,
-                    error=err,
-                ) from err
+                # Try to parse JSON — raise ResponseDecodeError if it fails
+                try:
+                    return response.json()
+                except ValueError as err:
+                    raise ResponseDecodeError(
+                        url=request.url,
+                        status_code=response.status_code,
+                        response_text=response.text,
+                        error=err,
+                    ) from err
 
         # TimeoutException is a subclass of RequestError, so catch it first
         except httpx.TimeoutException as err:
@@ -74,5 +74,3 @@ class HttpApiClient:
             ) from err
         except httpx.HTTPError as err:
             raise HttpApiError(err) from err
-        finally:
-            client.close()

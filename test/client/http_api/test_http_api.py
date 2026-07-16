@@ -1,6 +1,7 @@
 """Tests for mydash.client.http_api."""
 
-from unittest.mock import MagicMock
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -15,6 +16,28 @@ from mydash.client.http_api.errors import (
 from mydash.client.http_api.http_api import HttpApiClient
 
 MOCK_URL = "https://api.example.com/v1/resource"
+
+
+def _patch_async_client(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    send_return=None,
+    send_side_effect=None,
+):
+    """Patch ``httpx.AsyncClient`` for ``async with`` + ``await send``."""
+    mock_client = MagicMock()
+    if send_side_effect is not None:
+        mock_client.send = AsyncMock(side_effect=send_side_effect)
+    else:
+        mock_client.send = AsyncMock(return_value=send_return)
+
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_cm.__aexit__ = AsyncMock(return_value=None)
+
+    mock_client_cls = MagicMock(return_value=mock_cm)
+    monkeypatch.setattr(httpx, "AsyncClient", mock_client_cls)
+    return mock_client, mock_client_cls
 
 
 # =============================================
@@ -106,33 +129,30 @@ def test_make_request_returns_json_on_success(monkeypatch: pytest.MonkeyPatch):
     mock_response = httpx.Response(
         200, request=mock_request, json={"results": [1, 2, 3]}
     )
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.return_value = mock_response
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    mock_client, _ = _patch_async_client(monkeypatch, send_return=mock_response)
 
-    result = HttpApiClient().make_request(
-        url=httpx.URL(MOCK_URL),
-        request_method="GET",
-        parameters={"q": "miami"},
+    result = asyncio.run(
+        HttpApiClient().make_request(
+            url=httpx.URL(MOCK_URL),
+            request_method="GET",
+            parameters={"q": "miami"},
+        )
     )
 
     assert result == {"results": [1, 2, 3]}
-    mock_client_instance.send.assert_called_once()
-    mock_client_instance.close.assert_called_once()
+    mock_client.send.assert_awaited_once()
 
 
 def test_make_request_uses_default_timeout(monkeypatch: pytest.MonkeyPatch):
     mock_request = httpx.Request("GET", MOCK_URL)
     mock_response = httpx.Response(200, request=mock_request, json={"ok": True})
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.return_value = mock_response
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    _, mock_client_cls = _patch_async_client(monkeypatch, send_return=mock_response)
 
-    HttpApiClient().make_request(
-        url=httpx.URL(MOCK_URL),
-        request_method="GET",
+    asyncio.run(
+        HttpApiClient().make_request(
+            url=httpx.URL(MOCK_URL),
+            request_method="GET",
+        )
     )
 
     mock_client_cls.assert_called_once_with(timeout=5)
@@ -141,15 +161,14 @@ def test_make_request_uses_default_timeout(monkeypatch: pytest.MonkeyPatch):
 def test_make_request_uses_custom_timeout(monkeypatch: pytest.MonkeyPatch):
     mock_request = httpx.Request("GET", MOCK_URL)
     mock_response = httpx.Response(200, request=mock_request, json={"ok": True})
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.return_value = mock_response
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    _, mock_client_cls = _patch_async_client(monkeypatch, send_return=mock_response)
 
-    HttpApiClient().make_request(
-        url=httpx.URL(MOCK_URL),
-        request_method="GET",
-        timeout=15,
+    asyncio.run(
+        HttpApiClient().make_request(
+            url=httpx.URL(MOCK_URL),
+            request_method="GET",
+            timeout=15,
+        )
     )
 
     mock_client_cls.assert_called_once_with(timeout=15)
@@ -180,15 +199,14 @@ def test_make_request_bad_status_raises_status_code_error(
     mock_response = httpx.Response(
         status_code, request=mock_request, text='{"error": "something went wrong"}'
     )
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.return_value = mock_response
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    _patch_async_client(monkeypatch, send_return=mock_response)
 
     with pytest.raises(StatusCodeError) as err:
-        HttpApiClient().make_request(
-            url=httpx.URL(MOCK_URL),
-            request_method="GET",
+        asyncio.run(
+            HttpApiClient().make_request(
+                url=httpx.URL(MOCK_URL),
+                request_method="GET",
+            )
         )
 
     assert isinstance(err.value, StatusCodeError)
@@ -206,16 +224,14 @@ def test_make_request_connect_error_raises_request_error(
 ):
     mock_request = httpx.Request("GET", MOCK_URL)
     connect_err = httpx.ConnectError("Connection refused", request=mock_request)
-
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.side_effect = connect_err
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    _patch_async_client(monkeypatch, send_side_effect=connect_err)
 
     with pytest.raises(RequestError) as err:
-        HttpApiClient().make_request(
-            url=httpx.URL(MOCK_URL),
-            request_method="GET",
+        asyncio.run(
+            HttpApiClient().make_request(
+                url=httpx.URL(MOCK_URL),
+                request_method="GET",
+            )
         )
 
     assert isinstance(err.value, RequestError)
@@ -227,17 +243,15 @@ def test_make_request_timeout_raises_http_timeout_error(
 ):
     mock_request = httpx.Request("GET", MOCK_URL)
     timeout_err = httpx.ReadTimeout("Read timed out", request=mock_request)
-
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.side_effect = timeout_err
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    _patch_async_client(monkeypatch, send_side_effect=timeout_err)
 
     with pytest.raises(HttpTimeoutError) as err:
-        HttpApiClient().make_request(
-            url=httpx.URL(MOCK_URL),
-            request_method="GET",
-            timeout=5,
+        asyncio.run(
+            HttpApiClient().make_request(
+                url=httpx.URL(MOCK_URL),
+                request_method="GET",
+                timeout=5,
+            )
         )
 
     assert isinstance(err.value, HttpTimeoutError)
@@ -258,15 +272,14 @@ def test_make_request_invalid_json_raises_response_decode_error(
     mock_response = httpx.Response(
         200, request=mock_request, text="<html>not json</html>"
     )
-    mock_client_instance = MagicMock()
-    mock_client_instance.send.return_value = mock_response
-    mock_client_cls = MagicMock(return_value=mock_client_instance)
-    monkeypatch.setattr(httpx, "Client", mock_client_cls)
+    _patch_async_client(monkeypatch, send_return=mock_response)
 
     with pytest.raises(ResponseDecodeError) as err:
-        HttpApiClient().make_request(
-            url=httpx.URL(MOCK_URL),
-            request_method="GET",
+        asyncio.run(
+            HttpApiClient().make_request(
+                url=httpx.URL(MOCK_URL),
+                request_method="GET",
+            )
         )
 
     assert isinstance(err.value, ResponseDecodeError)
