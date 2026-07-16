@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 from typing import Literal
 
-from platformdirs import user_config_dir
+from platformdirs import user_config_path
 from pydantic import BaseModel, Field, ValidationError
 
 from mydash.client.geocoding.factory import get_geocoding_client
@@ -34,6 +34,7 @@ DEFAULT_PROVIDER_WEATHER = "open-meteo"
 DEFAULT_PROVIDER_STOCKS = "alpaca"
 DEFAULT_PROVIDER_GEOCODING = "open-meteo"
 DEFAULT_PROVIDER_NEWS = "noozra"
+
 
 # Allowed values for provider / units setters (must match client factories).
 KNOWN_WEATHER_PROVIDERS = frozenset({"open-meteo"})
@@ -65,11 +66,14 @@ class UserConfig(BaseModel):
 
 def default_config_path() -> Path:
     """Return the platform-appropriate config file path for mydash.
+    Application Support on macOS, XDG config on Linux, AppData on Windows.
 
-    Uses :func:`platformdirs.user_config_dir` (e.g. Application Support on
-    macOS, XDG config on Linux, AppData on Windows).
+    Typical File Paths on different Platforms:
+        MacOS: ~/Library/Application Support/mydash/config.json
+        Linux: ~/.config/mydash/config.json\"
+        Windows: C:\ Users\ <user>\AppData\\mydash\config.json
     """
-    return Path(user_config_dir("mydash", appauthor=False)) / "config.json"
+    return user_config_path("mydash", appauthor=False) / "config.json"
 
 
 class UserConfigurationService:
@@ -298,9 +302,7 @@ class UserConfigurationService:
         """Return the configured geocoding provider id."""
         return self._config.provider_geocoding
 
-    def _set_provider(
-        self, field: str, provider: str, allowed: frozenset[str]
-    ) -> None:
+    def _set_provider(self, field: str, provider: str, allowed: frozenset[str]) -> None:
         """Normalize, validate, assign a provider field, and persist.
 
         :param field: Attribute name on :class:`UserConfig`.
