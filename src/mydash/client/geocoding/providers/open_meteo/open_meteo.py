@@ -17,8 +17,8 @@ from mydash.client.geocoding.providers.open_meteo.errors import (
     OpenMeteoResponseError,
     ParameterSettingError,
 )
-from mydash.models.geocoding import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
+from mydash.models.geocoding import Coordinates
 
 
 # Open-Meteo's Geocoding API is mature, so its query parameters are modeled here
@@ -42,7 +42,7 @@ class OpenMeteoClient(GeocodingClient):
         self.url = httpx.URL("https://geocoding-api.open-meteo.com/v1/search")
         self.coordinates: Coordinates | None = None
 
-    def set_coordinates(self, city: str) -> None:
+    async def set_coordinates(self, city: str) -> None:
         """Resolve and cache coordinates for *city* on this client instance."""
 
         try:
@@ -50,7 +50,7 @@ class OpenMeteoClient(GeocodingClient):
         except ValidationError as err:
             raise ParameterSettingError(err)
 
-        api_response = HttpApiClient().make_request(
+        api_response = await HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.model_dump()
         )
 

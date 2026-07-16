@@ -9,7 +9,6 @@ from datetime import datetime
 import httpx
 from pydantic import ValidationError
 
-from mydash.models.geocoding import Coordinates
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.weather.base import WeatherClient
 from mydash.client.weather.providers.open_meteo.errors import (
@@ -26,6 +25,7 @@ from mydash.client.weather.providers.open_meteo.schemas import (
     Parameters,
     WeatherUnitsPreset,
 )
+from mydash.models.geocoding import Coordinates
 from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
 
 
@@ -81,7 +81,7 @@ class OpenMeteoClient(WeatherClient):
         except ValidationError as err:
             raise ParameterSettingError(validation_err=err)
 
-    def set_weather_forecast(
+    async def set_weather_forecast(
         self,
         forecast_length: int = 1,
         backwardcast_length: int = 1,
@@ -100,7 +100,7 @@ class OpenMeteoClient(WeatherClient):
             units=units,
         )
 
-        weather_data = HttpApiClient().make_request(
+        weather_data = await HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.to_params()
         )
 

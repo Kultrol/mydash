@@ -14,7 +14,7 @@ class NewsClient(Protocol):
     """Protocol for news headline providers."""
 
     @abstractmethod
-    def set_news_headlines(self, category: str) -> None:
+    async def set_news_headlines(self, category: str) -> None:
         """Fetch headlines from the provider and cache them on the client instance.
 
         :param category: News category to request from the provider.

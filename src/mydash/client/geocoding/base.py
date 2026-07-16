@@ -27,16 +27,15 @@ class GeocodingClient(Protocol):
         self.coordinates: Coordinates | None
 
     @abstractmethod
-    def set_coordinates(self, city: str) -> None:
+    async def set_coordinates(self, city: str) -> None:
         """Resolve and cache coordinates for *city* on the client instance.
 
         :param city: Human-readable place name (e.g. "Miami").
         """
 
     def get_coordinates(self) -> Coordinates:
-        """Resolve *city* to latitude/longitude without requiring prior ``set_coordinates``.
+        """Return coordinates cached by the most recent ``set_coordinates`` call.
 
-        :param city: Human-readable place name.
         :return: Validated :class:`Coordinates` for the best-matching result.
         """
         ...

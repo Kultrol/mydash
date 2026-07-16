@@ -39,7 +39,7 @@ class WeatherClient(Protocol):
         """Get coordinates from the weather client"""
 
     @abstractmethod
-    def set_weather_forecast(
+    async def set_weather_forecast(
         self,
         forecast_length: int,
         backwardcast_length: int,

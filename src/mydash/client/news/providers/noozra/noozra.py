@@ -31,13 +31,13 @@ class NoozraClient(NewsClient):
         self.url = httpx.URL("https://noozra.com/api/articles")
         self.news_headlines: NewsHeadlines | None = None
 
-    def set_news_headlines(self, category: str) -> None:
+    async def set_news_headlines(self, category: str) -> None:
         try:
             params = NoozraParams(category=category)
         except ValidationError as err:
             raise ParameterSettingError(validation_err=err)
 
-        raw_news_headlines = HttpApiClient().make_request(
+        raw_news_headlines = await HttpApiClient().make_request(
             url=self.url, request_method="GET", parameters=params.model_dump()
         )
 

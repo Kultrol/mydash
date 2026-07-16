@@ -13,7 +13,7 @@ class StockClient(Protocol):
     """Protocol for stock quote providers."""
 
     @abstractmethod
-    def set_current_stock_quotes(self, symbols: list[str]) -> None:
+    async def set_current_stock_quotes(self, symbols: list[str]) -> None:
         """Fetch latest quotes from the provider and cache them on the client."""
 
     @abstractmethod
@@ -22,7 +22,7 @@ class StockClient(Protocol):
         ...
 
     @abstractmethod
-    def set_current_stock_bars(self, symbols: list[str]) -> None: ...
+    async def set_current_stock_bars(self, symbols: list[str]) -> None: ...
 
     @abstractmethod
     def get_current_stock_bars(self) -> StockBars: ...
