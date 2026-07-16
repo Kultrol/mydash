@@ -1,7 +1,7 @@
 """``mydash set weather`` — city, forecast units, and weather provider.
 
 Incomplete ``mydash set weather`` shows next-step hints; leaf commands
-update :class:`~mydash.services.user_config.UserConfigurationService`.
+update :class:`~mydash.core.services.user_config.UserConfigurationService`.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from mydash.cli.commands.set._helpers import (
     require_arg,
     run,
 )
-from mydash.services.user_config import KNOWN_WEATHER_PROVIDERS, KNOWN_WEATHER_UNITS
+from mydash.core.services.user_config import KNOWN_WEATHER_PROVIDERS, KNOWN_WEATHER_UNITS
 
 app = typer.Typer(
     help="🌤️  Weather-related preferences (city, units, provider).",

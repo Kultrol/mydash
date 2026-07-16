@@ -11,7 +11,7 @@ from mydash.cli.commands.set._helpers import (
     require_arg,
     run,
 )
-from mydash.services.user_config import KNOWN_STOCK_PROVIDERS
+from mydash.core.services.user_config import KNOWN_STOCK_PROVIDERS
 
 app = typer.Typer(
     help="📈  Stocks-related preferences (symbols, provider).",

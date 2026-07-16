@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from mydash.services.user_config import UserConfigurationService
+from mydash.core.services.user_config import UserConfigurationService
 
 console = Console()
 

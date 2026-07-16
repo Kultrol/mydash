@@ -14,10 +14,10 @@ from rich.style import Style
 from rich.table import Table
 from rich.text import Text
 
-from mydash.services.brief import DailyBrief
+from mydash.core.services.brief import DailyBrief
 
 if TYPE_CHECKING:
-    from mydash.models.weather import HourForecast
+    from mydash.core.models.weather import HourForecast
 
 HEADLINE_LIMIT = 8
 WEATHER_HOURS = 6

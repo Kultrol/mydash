@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock
 from typer.testing import CliRunner
 
 from mydash.cli.main import app
-from mydash.models.news import HeadLine, NewsHeadlines
-from mydash.models.stocks import StockBar, StockBars, StockQuote, StockQuotes
-from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
-from mydash.services.brief import DailyBrief
+from mydash.core.models.news import HeadLine, NewsHeadlines
+from mydash.core.models.stocks import StockBar, StockBars, StockQuote, StockQuotes
+from mydash.core.models.weather import DayForecast, HourForecast, MultiDayForecast
+from mydash.core.services.brief import DailyBrief
 
 runner = CliRunner()
 

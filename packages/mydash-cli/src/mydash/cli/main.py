@@ -13,7 +13,7 @@ from rich.traceback import install
 
 from mydash.cli.commands.set import set_app
 from mydash.cli.renderers.brief import render_brief
-from mydash.services.brief import BriefService
+from mydash.core.services.brief import BriefService
 
 install(show_locals=True)
 

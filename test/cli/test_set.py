@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, MagicMock
 from typer.testing import CliRunner
 
 from mydash.cli.main import app
-from mydash.models.geocoding import Coordinates
-from mydash.services.user_config import UserConfigurationService
+from mydash.core.models.geocoding import Coordinates
+from mydash.core.services.user_config import UserConfigurationService
 
 runner = CliRunner()
 
@@ -80,7 +80,7 @@ def test_set_weather_city(tmp_path: Path, mocker):
     geo.set_coordinates = AsyncMock()
     geo.get_coordinates.return_value = coords
     mocker.patch(
-        "mydash.services.user_config.get_geocoding_client", return_value=geo
+        "mydash.core.services.user_config.get_geocoding_client", return_value=geo
     )
     mocker.patch(
         "mydash.cli.commands.set._helpers.UserConfigurationService",

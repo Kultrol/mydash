@@ -11,7 +11,7 @@ from mydash.cli.commands.set._helpers import (
     require_arg,
     run,
 )
-from mydash.services.user_config import KNOWN_GEOCODING_PROVIDERS
+from mydash.core.services.user_config import KNOWN_GEOCODING_PROVIDERS
 
 app = typer.Typer(
     help="📍  Geocoding-related preferences (provider).",

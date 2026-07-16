@@ -11,7 +11,7 @@ from mydash.cli.commands.set._helpers import (
     require_arg,
     run,
 )
-from mydash.services.user_config import KNOWN_NEWS_PROVIDERS
+from mydash.core.services.user_config import KNOWN_NEWS_PROVIDERS
 
 app = typer.Typer(
     help="📰  News-related preferences (category, provider).",
