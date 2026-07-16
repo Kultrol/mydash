@@ -5,6 +5,7 @@ Preferences (city, symbols, category, units, providers) come from
 ``set`` command and the brief stay in sync.
 """
 
+import asyncio
 from typing import Literal
 
 from pydantic import BaseModel
@@ -56,10 +57,12 @@ class DailyBrief(BaseModel):
 class BriefService:
     """Fetch all brief domains and return a :class:`DailyBrief` (fail-fast)."""
 
-    def build(
+    async def build(
         self, config_service: UserConfigurationService | None = None
     ) -> DailyBrief:
         """Fetch weather, news, and stocks using saved user preferences.
+
+        Domain fetches run concurrently via :func:`asyncio.gather`.
 
         :param config_service: Optional config instance (tests inject a temp
             path). When omitted, loads the platform user config file.
@@ -68,17 +71,20 @@ class BriefService:
         cfg_svc = config_service or UserConfigurationService()
         cfg = cfg_svc.get_configuration()
 
-        weather = WeatherService(
-            weather_provider=cfg.provider_weather,
-            geocoding_provider=cfg.provider_geocoding,
-        ).fetch_today_weather_forecast(city=cfg.city, units=cfg.weather_units)
-        headlines = NewsService(news_provider=cfg.provider_news).fetch_news(
-            category=cfg.news_category
+        weather, headlines, stock_pair = await asyncio.gather(
+            WeatherService(
+                weather_provider=cfg.provider_weather,
+                geocoding_provider=cfg.provider_geocoding,
+            ).fetch_today_weather_forecast(city=cfg.city, units=cfg.weather_units),
+            NewsService(news_provider=cfg.provider_news).fetch_news(
+                category=cfg.news_category
+            ),
+            StocksService(
+                stock_ticker_symbols=list(cfg.stock_symbols),
+                stock_provider=cfg.provider_stocks,
+            ).fetch_stock_bars_and_quotes(),
         )
-        stock_quotes, stock_bars = StocksService(
-            stock_ticker_symbols=list(cfg.stock_symbols),
-            stock_provider=cfg.provider_stocks,
-        ).fetch_stock_bars_and_quotes()
+        stock_quotes, stock_bars = stock_pair
 
         return DailyBrief(
             headlines=headlines,

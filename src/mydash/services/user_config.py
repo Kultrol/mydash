@@ -70,8 +70,8 @@ def default_config_path() -> Path:
 
     Typical File Paths on different Platforms:
         MacOS: ~/Library/Application Support/mydash/config.json
-        Linux: ~/.config/mydash/config.json\"
-        Windows: C:\ Users\ <user>\AppData\\mydash\config.json
+        Linux: ~/.config/mydash/config.json
+        Windows: C:\\Users\\<user>\\AppData\\mydash\\config.json
     """
     return user_config_path("mydash", appauthor=False) / "config.json"
 
@@ -151,7 +151,7 @@ class UserConfigurationService:
         self._config = config.model_copy(deep=True)
         self._save()
 
-    def set_city(self, city: str) -> None:
+    async def set_city(self, city: str) -> None:
         """Geocode *city*, store name + coordinates, and persist.
 
         Uses the configured geocoding provider (network call).
@@ -164,7 +164,7 @@ class UserConfigurationService:
         if not city:
             raise ValueError("city must be a non-empty string")
         client = get_geocoding_client(provider=self._config.provider_geocoding)
-        client.set_coordinates(city=city)
+        await client.set_coordinates(city=city)
         coordinates = client.get_coordinates()
         self._config.city = city
         self._config.coordinates = coordinates

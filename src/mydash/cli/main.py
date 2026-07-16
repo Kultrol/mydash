@@ -4,6 +4,8 @@ Registers top-level commands: ``brief`` (daily dashboard) and ``set``
 (user preferences under ``cli.commands.set``).
 """
 
+import asyncio
+
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
@@ -32,7 +34,7 @@ def main() -> None:
 @app.command("brief")
 def brief():
     """Build and display the daily brief using saved user preferences."""
-    brief_data = BriefService().build()
+    brief_data = asyncio.run(BriefService().build())
     render_brief(console, brief_data)
 
 

@@ -32,7 +32,7 @@ class WeatherService:
             provider=geocoding_provider
         )
 
-    def fetch_today_weather_forecast(
+    async def fetch_today_weather_forecast(
         self,
         city: str,
         units: WeatherUnits = "metric",
@@ -45,10 +45,10 @@ class WeatherService:
         :param units: ``metric`` or ``imperial`` (passed through to the provider).
         :returns: Parsed multi-day container (typically one calendar day).
         """
-        self.geocoding_client.set_coordinates(city=city)
+        await self.geocoding_client.set_coordinates(city=city)
         coordinates: Coordinates = self.geocoding_client.get_coordinates()
         self.weather_client.set_coordinates(coordinates=coordinates)
-        self.weather_client.set_weather_forecast(
+        await self.weather_client.set_weather_forecast(
             forecast_length=1,
             backwardcast_length=0,
             units=units,

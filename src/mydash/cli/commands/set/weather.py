@@ -6,6 +6,8 @@ update :class:`~mydash.services.user_config.UserConfigurationService`.
 
 from __future__ import annotations
 
+import asyncio
+
 import typer
 
 from mydash.cli.commands.set._helpers import (
@@ -71,7 +73,7 @@ def city(
     svc = config_service()
 
     def action() -> None:
-        svc.set_city(city)
+        asyncio.run(svc.set_city(city))
 
     def message() -> str:
         coords = svc.get_coordinates()
