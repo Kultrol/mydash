@@ -1,0 +1,24 @@
+[project]
+name = "mydash-core"
+version = "0.5.0"
+description = "Shared domain core for mydash (services, models, clients)."
+readme = "README.md"
+authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.28.1",
+  "platformdirs>=4.3.0",
+  "pydantic>=2.13.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/Kultrol/mydash"
+Repository = "https://github.com/Kultrol/mydash"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mydash"]
