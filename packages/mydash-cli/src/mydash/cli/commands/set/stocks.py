@@ -50,7 +50,7 @@ def add(
     ),
 ) -> None:
     """Add a ticker symbol to the brief markets panel."""
-    symbol = require_arg(
+    ticker = require_arg(
         symbol,
         title="📈  set stocks add",
         intro="A ticker symbol is required.",
@@ -66,12 +66,12 @@ def add(
     svc = config_service()
 
     def action() -> None:
-        svc.add_stock_symbol(symbol)
+        svc.add_stock_symbol(ticker)
 
     def message() -> str:
         symbols = ", ".join(svc.get_stock_symbols())
         return (
-            f"Added [bold bright_white]{symbol.strip().upper()}[/bold bright_white]\n"
+            f"Added [bold bright_white]{ticker.strip().upper()}[/bold bright_white]\n"
             f"Symbols: [bright_cyan]{symbols}[/bright_cyan]"
         )
 
@@ -86,7 +86,7 @@ def remove(
     ),
 ) -> None:
     """Remove a ticker symbol from the brief markets panel."""
-    symbol = require_arg(
+    ticker = require_arg(
         symbol,
         title="📈  set stocks remove",
         intro="A ticker symbol is required.",
@@ -101,12 +101,12 @@ def remove(
     svc = config_service()
 
     def action() -> None:
-        svc.remove_stock_symbol(symbol)
+        svc.remove_stock_symbol(ticker)
 
     def message() -> str:
         symbols = ", ".join(svc.get_stock_symbols()) or "(none)"
         return (
-            f"Removed [bold bright_white]{symbol.strip().upper()}[/bold bright_white]\n"
+            f"Removed [bold bright_white]{ticker.strip().upper()}[/bold bright_white]\n"
             f"Symbols: [bright_cyan]{symbols}[/bright_cyan]"
         )
 
