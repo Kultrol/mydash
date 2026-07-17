@@ -13,10 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `mydash set` command tree (weather, stocks, news, geocoding, show) with Rich panels and next-step hints
 - Weather forecast unit presets (`metric` | `imperial`) end-to-end (Open-Meteo params + brief display)
 - Brief reads city, symbols, news category, units, and providers from user config
+- Web scaffolding: `frontend/` Next.js + Tailwind + shadcn/ui placeholder dashboard (Vercel root)
 
 ### Changed
 
 - Docs (README, architecture) describe configurable prefs instead of hardcoded-only MVP notes
+- Architecture / README document `frontend/` and FastAPI presentation layer
+- Package layout: shared domain under `mydash.core`; products **CLI** (Rich → Typer → core) and **Web** (Next.js → FastAPI → core)
+- Tests for domain code moved to `test/core/{services,client}/`
+- **Separate installable packages** (uv workspace under `packages/`):
+  - `mydash` — CLI only (Typer + Rich + `mydash-core`)
+  - `mydash-web` — FastAPI API only (FastAPI + Uvicorn + `mydash-core`)
+  - `mydash-core` — shared services, models, clients
 
 ## [0.5.0] — 2026-07-13
 

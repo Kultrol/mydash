@@ -11,7 +11,7 @@
 
 **mydash** is a friendly command-line daily brief for Python folks who live in the terminal. It pulls live data from public APIs and paints it with Rich so your morning check-in feels quick and clear.
 
-> **Still an MVP** — not a polished 1.0 product. You get a daily **`brief`**, user **`set`** preferences, and a clean three-layer layout (**CLI → services → clients**). Defaults ship out of the box; personalize city, symbols, news category, units, and providers with `mydash set`.
+> **Still an MVP** — not a polished 1.0 product. You get a daily **`brief`**, user **`set`** preferences, and two products on a shared core (**CLI: Rich → Typer → core**; **Web: Next.js → FastAPI → core**). Defaults ship out of the box; personalize city, symbols, news category, units, and providers with `mydash set`.
 
 ---
 
@@ -53,39 +53,49 @@ You’ll get three full-width panels:
 
 ## 📦 Install
 
-### Option A — install from the GitHub Release (quickest)
+mydash is split into **separate installables** so you can take only what you need:
 
-Download and install the published **v0.5.0 MVP** wheel (Python 3.12+):
+| Package | What you get | Pulls in |
+|---------|--------------|----------|
+| **`mydash`** | CLI (`mydash brief`, `mydash set`) | `mydash-core` + Typer + Rich |
+| **`mydash-web`** | FastAPI app (`mydash.api.main:app`) | `mydash-core` + FastAPI + Uvicorn |
+| **`mydash-core`** | Shared domain (usually transitive) | httpx, Pydantic, platformdirs, dotenv |
+
+The Next.js UI lives in `frontend/` (npm) and talks to **`mydash-web`** over HTTP.
+
+### Option A — CLI only (end users)
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install https://github.com/Kultrol/mydash/releases/download/v0.5.0/mydash-0.5.0-py3-none-any.whl
+pip install mydash          # or a release wheel from GitHub Releases
 mydash brief
 ```
 
-You can also grab the `.whl` or `.tar.gz` from the [Releases page](https://github.com/Kultrol/mydash/releases) and `pip install` the file locally.
+Published **v0.5.0** monolithic wheel (pre-split) still works from the [Releases page](https://github.com/Kultrol/mydash/releases):
 
-### Option B — install from source
+```bash
+pip install https://github.com/Kultrol/mydash/releases/download/v0.5.0/mydash-0.5.0-py3-none-any.whl
+```
+
+### Option B — Web API only
+
+```bash
+pip install mydash-web
+uvicorn mydash.api.main:app --reload --port 8000
+```
+
+Then run the frontend separately (`cd frontend && npm install && npm run dev`).
+
+### Option C — develop from source (both products)
 
 ```bash
 git clone https://github.com/Kultrol/mydash.git
 cd mydash
+uv sync --group dev    # workspace: mydash + mydash-web + mydash-core
 ```
 
-With [uv](https://docs.astral.sh/uv/) (recommended):
-
-```bash
-uv sync
-```
-
-Or with plain pip:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
-```
+This monorepo is a **uv workspace**. Packages live under `packages/mydash-{core,cli,web}/`.
 
 ---
 
@@ -167,24 +177,67 @@ The file is created automatically with defaults (Miami, tech news, SPY/AAPL/MSFT
 
 ## 🏗️ Architecture
 
-Three layers, one way traffic:
+**Two products, one shared core package** — presentation never owns providers; core never imports Typer, Rich, FastAPI, or React.
+
+| Product | Install | Stack (outer → inner) |
+|---------|---------|------------------------|
+| **CLI** | `mydash` | Rich → Typer → `mydash.core` |
+| **Web** | `mydash-web` + `frontend/` | Next.js → FastAPI → `mydash.core` |
 
 ```mermaid
 flowchart LR
-    CLI["cli/ Typer + Rich"]
-    SVC["services/ Brief + UserConfig"]
-    DATA["client/ providers"]
-    CLI --> SVC --> DATA
+    RICH["Rich"]
+    TYPER["Typer"]
+    API["mydash-web FastAPI"]
+    FE["frontend/ Next.js"]
+    CORE["mydash-core"]
+    RICH --> TYPER --> CORE
+    FE -.->|HTTP| API --> CORE
 ```
 
 | Layer | Role |
 |-------|------|
-| 🎨 **Presentation** | `cli/` — `brief`, `set`, Rich panels |
-| ⚙️ **Orchestration** | `services/` — `BriefService`, domain services, `UserConfigurationService` |
-| 🔌 **Data** | `client/` — factories, protocols, HTTP providers |
-| 📦 **Models** | `models/` — shared Pydantic domain types |
+| 🎨 **CLI** | package `mydash` — `mydash.cli` (Rich + Typer) |
+| 🌐 **Web** | package `mydash-web` — `mydash.api` + monorepo `frontend/` |
+| ⚙️ **Core** | package `mydash-core` — services, models, clients |
 
 Want the deeper map? See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## 🌐 Web (development)
+
+Install **`mydash-web`** (or `uv sync` at the monorepo root) and run the Next.js app in `frontend/`.
+
+### Frontend (Next.js)
+
+```bash
+cd frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Details: [frontend/README.md](frontend/README.md).
+
+### API
+
+```bash
+# monorepo
+uv run uvicorn mydash.api.main:app --reload --port 8000
+
+# or after: pip install mydash-web
+uvicorn mydash.api.main:app --reload --port 8000
+```
+
+Point the frontend at the API via `NEXT_PUBLIC_API_BASE_URL` (see `frontend/.env.local.example`).
+
+### Deploy frontend to Vercel
+
+1. Import this GitHub repo in [Vercel](https://vercel.com/) (Hobby plan is free for personal projects — confirm current limits).
+2. Set **Root Directory** to `frontend`.
+3. Framework preset: Next.js.
+4. The API is **not** part of that deploy; host FastAPI separately when you leave local-only mode, then set `NEXT_PUBLIC_API_BASE_URL` and CORS.
 
 ---
 
@@ -194,11 +247,15 @@ Want the deeper map? See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 |-----------|------------|
 | ⌨️ CLI | [Typer](https://typer.tiangolo.com/) |
 | 🌈 Terminal UI | [Rich](https://rich.readthedocs.io/) |
-| 🌍 HTTP | [httpx](https://www.python-httpx.org/) |
+| 🌐 HTTP API | [FastAPI](https://fastapi.tiangolo.com/) + Uvicorn (`mydash-web`) |
+| 🖥️ Web UI | [Next.js](https://nextjs.org/) + [shadcn/ui](https://ui.shadcn.com/) + Tailwind (`frontend/`) |
+| 🌍 HTTP client | [httpx](https://www.python-httpx.org/) |
 | 📐 Schemas | [Pydantic](https://docs.pydantic.dev/) |
 | 📁 Config path | [platformdirs](https://platformdirs.readthedocs.io/) |
 | 🔐 Secrets | python-dotenv |
-| 🧰 Tooling | [uv](https://docs.astral.sh/uv/) + hatchling |
+| 🧰 Tooling | [uv](https://docs.astral.sh/uv/) workspace + hatchling |
+| 📦 Python packages | `mydash` · `mydash-web` · `mydash-core` |
+| ☁️ Frontend host | [Vercel](https://vercel.com/) (`frontend/` root) |
 
 ---
 
@@ -209,15 +266,15 @@ uv sync --group dev
 uv run pytest
 ```
 
-Tests cover clients (providers + factories), services (brief + user config), and CLI paths for `brief` and `set`.
+Tests cover clients (providers + factories), services (brief + user config), and CLI paths for `brief` and `set`. Frontend: `cd frontend && npm run build`.
 
 ---
 
 ## 🔭 Looking ahead
 
-**Today** is a working MVP: daily `brief`, user `set` preferences, three panels, and a clean three-layer layout you can install and run.
+**Today** is a working MVP: daily `brief`, user `set` preferences, three panels, shared `core/` under CLI and API, plus a `frontend/` scaffold for the web UI.
 
-**Version 1.0** means a production-ready *terminal* app you can rely on day to day — still not a website. Web and other interfaces can reuse the same service layer later.
+**Version 1.0** means a production-ready *terminal* app you can rely on day to day. FastAPI routes and a live web brief can proceed in parallel on the same services.
 
 ### Path to 1.0
 
@@ -226,9 +283,9 @@ Tests cover clients (providers + factories), services (brief + user config), and
 - 🧪 **Tests & automation** — shared fixtures, CI on every push, enough coverage that refactors stay safe  
 - 📚 **Docs for a stable release** — keep [CHANGELOG](CHANGELOG.md) current and a command surface that feels intentional for daily use  
 
-### After 1.0
+### After 1.0 / web track
 
-- 🌐 A website or small API on top of the same services (no second copy of the business logic)  
+- 🌐 Add FastAPI presentation layer and wire `frontend/lib/api.ts` to live brief/config routes  
 - ⚡ Optional caching for faster repeat views  
 - 📅 More dashboard domains over time (calendar, tasks, AI-assisted briefs, and similar)
 
@@ -242,7 +299,7 @@ Parts of this codebase were built with help from [Grok Build](https://x.ai/cli) 
 
 - 🩹 **Small fixes** — bug fixes, comment cleanups, and other limited changes I could check file by file  
 - 🧪 **Quick experiments** — trying CLI layout ideas and how the service layer wires to clients before locking in an approach  
-- 🧹 **Tedious refactors** — mechanical work such as moving domain schemas into a shared `models/` package and updating imports across clients and tests  
+- 🧹 **Tedious refactors** — mechanical work such as import renames or test layout cleanup  
 - 📝 **Boilerplate & docs** — starting test files, improving docstrings, and polishing README/architecture notes  
 
 Design decisions and larger features are still reviewed and owned manually. AI-assisted work is meant to speed up the boring parts, not replace judgment on architecture or product direction.
