@@ -19,6 +19,7 @@ from mydash.env import (
     candidate_paths,
     has_alpaca_credentials,
     load_environment,
+    missing_alpaca_variables,
     user_env_path,
     write_template,
 )
@@ -205,11 +206,45 @@ def test_template_creates_missing_directories(tmp_path: Path):
     assert destination.is_file()
 
 
-def test_template_placeholders_are_not_credentials():
-    """A fresh template must not read as configured credentials."""
+def test_an_unfilled_template_does_not_read_as_credentials():
+    """A freshly created template is a to-do, not a working setup."""
     write_template()
     load_environment()
 
-    # Placeholder values are non-blank, so this documents the tradeoff: the
-    # template is a starting point, and doctor is what tells you it is unfilled.
-    assert env.TEMPLATE.count("your_alpaca") == 2
+    assert not has_alpaca_credentials()
+    assert missing_alpaca_variables() == [ALPACA_KEY_VAR, ALPACA_SECRET_VAR]
+
+
+def test_filling_in_one_value_leaves_the_other_reported():
+    write_template()
+    load_environment()
+    os.environ[ALPACA_KEY_VAR] = "PKREALKEY"
+
+    assert missing_alpaca_variables() == [ALPACA_SECRET_VAR]
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("PKREALKEY123", True),
+        ("your_alpaca_key_id", False),
+        ("YOUR_ALPACA_SECRET", False),
+        ("  your_alpaca_secret  ", False),
+        ("", False),
+        ("   ", False),
+        (None, False),
+    ],
+)
+def test_is_configured_rejects_blanks_and_placeholders(value, expected):
+    assert env.is_configured(value) is expected
+
+
+def test_every_template_placeholder_is_recognised():
+    """If the template gains a value, PLACEHOLDERS has to know about it."""
+    values = {
+        line.split("=", 1)[1].strip().lower()
+        for line in env.TEMPLATE.splitlines()
+        if "=" in line and not line.startswith("#")
+    }
+
+    assert values == set(env.PLACEHOLDERS)

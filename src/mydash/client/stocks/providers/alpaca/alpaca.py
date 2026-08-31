@@ -26,6 +26,7 @@ from mydash.client.stocks.providers.alpaca.errors import (
     ParameterSettingError,
     ResponseError,
 )
+from mydash.env import is_configured
 from mydash.models.stocks import StockBar, StockBars, StockQuote, StockQuotes
 from mydash.storage.cache import TTL
 
@@ -65,17 +66,20 @@ class AlpacaClient(StockClient):
     def credentials() -> tuple[str, str]:
         """Return the Alpaca key and secret from the environment.
 
-        :raises MissingCredentialsError: If either is unset or blank.
+        :raises MissingCredentialsError: If either is unset, blank, or still
+            holding the placeholder from a freshly created template.
         """
         api_key = os.getenv(API_KEY_ENV_VAR) or ""
         api_secret = os.getenv(API_SECRET_ENV_VAR) or ""
+        # An unfilled template counts as missing: better a clear message than
+        # sending "your_alpaca_key_id" to Alpaca and getting a 403 back.
         missing = [
             name
             for name, value in (
                 (API_KEY_ENV_VAR, api_key),
                 (API_SECRET_ENV_VAR, api_secret),
             )
-            if not value.strip()
+            if not is_configured(value)
         ]
         if missing:
             raise MissingCredentialsError(missing)

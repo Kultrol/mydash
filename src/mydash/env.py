@@ -31,6 +31,10 @@ ENV_FILE_ENV_VAR = "MYDASH_ENV_FILE"
 ALPACA_KEY_VAR = "STOCK_ALPACA_API_KEY_ID"
 ALPACA_SECRET_VAR = "STOCK_ALPACA_API_SECRET_KEY"
 
+#: The values :data:`TEMPLATE` ships with. A file still holding these has not
+#: been filled in, and must not read as configured credentials.
+PLACEHOLDERS = frozenset({"your_alpaca_key_id", "your_alpaca_secret"})
+
 TEMPLATE = f"""\
 # mydash credentials
 #
@@ -93,12 +97,31 @@ def load_environment() -> list[Path]:
     return loaded
 
 
-def has_alpaca_credentials() -> bool:
-    """True when both Alpaca variables are set to something non-blank."""
-    return all(
-        (os.getenv(name) or "").strip()
+def is_configured(value: str | None) -> bool:
+    """True when *value* is a real credential rather than blank or a placeholder.
+
+    A freshly created template is not credentials. Saying "found" for one would
+    send ``your_alpaca_key_id`` to Alpaca and turn a clear "fill this in" into a
+    confusing 403.
+    """
+    if value is None:
+        return False
+    cleaned = value.strip()
+    return bool(cleaned) and cleaned.lower() not in PLACEHOLDERS
+
+
+def missing_alpaca_variables() -> list[str]:
+    """Return the Alpaca variables that are unset, blank, or still placeholders."""
+    return [
+        name
         for name in (ALPACA_KEY_VAR, ALPACA_SECRET_VAR)
-    )
+        if not is_configured(os.getenv(name))
+    ]
+
+
+def has_alpaca_credentials() -> bool:
+    """True when both Alpaca variables hold real values."""
+    return not missing_alpaca_variables()
 
 
 def write_template(path: Path | None = None, *, overwrite: bool = False) -> Path:
