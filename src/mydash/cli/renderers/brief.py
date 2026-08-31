@@ -1,311 +1,98 @@
 """Rich layout for the daily brief (presentation only).
 
-Three full-width panels, printed top to bottom: Markets, Weather, Headlines.
+A header line, then one panel per requested domain. Each panel is the same
+builder the single-domain commands use, so ``mydash weather`` and the weather
+panel inside ``mydash brief`` can never drift apart.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
 from rich.console import Console
-from rich.panel import Panel
-from rich.style import Style
-from rich.table import Table
+from rich.rule import Rule
 from rich.text import Text
 
+from mydash.cli import ui
+from mydash.cli.renderers.news import DEFAULT_LIMIT as HEADLINE_LIMIT
+from mydash.cli.renderers.news import headlines_panel
+from mydash.cli.renderers.stocks import stocks_panel
+from mydash.cli.renderers.weather import DEFAULT_HOURS as WEATHER_HOURS
+from mydash.cli.renderers.weather import weather_panel
 from mydash.services.brief import DailyBrief
 
-HEADLINE_LIMIT = 8
-WEATHER_HOURS = 6
 
-STYLE_UP = "bold bright_green"
-STYLE_DOWN = "bold bright_red"
-STYLE_FLAT = "bold bright_white"
-STYLE_MONEY = "bright_cyan"
-STYLE_META = "bright_black"
-STYLE_HEADLINE = "bold bright_white"
-STYLE_SOURCE = "bold bright_blue"
+def render_brief(
+    console: Console, brief: DailyBrief, *, compact: bool = False
+) -> None:
+    """Print the requested panels, stacked, in brief order.
 
-BORDER_STOCKS = "bright_green"
-BORDER_WEATHER = "bright_yellow"
-BORDER_HEADLINES = "bright_blue"
-
-# Temperature color thresholds (aligned to metric / imperial presets).
-TEMP_HOT_C = 29.0
-TEMP_COLD_C = 10.0
-TEMP_HOT_F = 84.0
-TEMP_COLD_F = 50.0
-RAIN_WET = 60
-RAIN_DRIZZLE = 30
-
-
-#: Panel builder per brief domain.
-_PANELS = {
-    "stocks": lambda brief: _stocks_panel(brief),
-    "weather": lambda brief: _weather_panel(brief),
-    "news": lambda brief: _headlines_panel(brief),
-}
-
-
-def render_brief(console: Console, brief: DailyBrief) -> None:
-    """Print the requested panels, stacked, in brief order."""
+    :param console: Console to print to.
+    :param brief: Composed brief, including any per-domain failures.
+    :param compact: Denser tables with fewer columns.
+    """
+    console.print(_header(brief))
     for domain in brief.domains:
         builder = _PANELS.get(domain)
         if builder is not None:
-            console.print(builder(brief))
+            console.print(builder(brief, compact))
+    if not brief.is_complete:
+        console.print(_failure_footer(brief))
 
 
-def _unavailable(reason: str) -> Text:
-    """Body for a panel whose provider failed, explaining why."""
-    body = Text()
-    body.append("Unavailable — ", style="bold bright_red")
-    body.append(reason, style="bright_white")
-    return body
+def _header(brief: DailyBrief) -> Rule:
+    """Title rule with the date and the city the brief was built for."""
+    label = Text()
+    label.append("mydash", style="brand")
+    label.append("  ·  ", style="muted")
+    label.append(brief.generated_at.strftime("%A %d %B"), style="heading")
+    label.append("  ·  ", style="muted")
+    label.append(brief.city, style="accent")
+    label.append("  ·  ", style="muted")
+    label.append(ui.local_time(brief.generated_at), style="muted")
+    return Rule(label, style="muted", align="left")
 
 
-def _stocks_panel(brief: DailyBrief) -> Panel:
-    """Markets panel: dollar prices, direction markers, and quote times."""
-    table = Table(
-        expand=True,
-        show_lines=False,
-        pad_edge=False,
-        header_style="bold bright_white",
-        border_style="dim",
-    )
-    table.add_column("Ticker", style="bold bright_white", no_wrap=True)
-    table.add_column("Bid", justify="right", no_wrap=True)
-    table.add_column("Ask", justify="right", no_wrap=True)
-    table.add_column("Close", justify="right", no_wrap=True)
-    table.add_column("Change", justify="right", no_wrap=True)
-    table.add_column("As of", justify="right", style=STYLE_META, no_wrap=True)
+def _failure_footer(brief: DailyBrief) -> Text:
+    """One muted line naming the panels that came back empty."""
+    footer = Text()
+    footer.append("Some panels are unavailable: ", style="muted")
+    footer.append(", ".join(sorted(brief.errors)), style="warn")
+    footer.append("  ·  retry with ", style="muted")
+    footer.append("mydash brief --refresh", style="accent")
+    footer.append("  ·  diagnose with ", style="muted")
+    footer.append("mydash doctor", style="accent")
+    return footer
 
-    failure = brief.failed("stocks")
-    if failure is not None:
-        return Panel(
-            _unavailable(failure),
-            title="📈 Markets",
-            border_style=BORDER_STOCKS,
-            title_align="left",
-        )
 
-    bars_by_ticker = {bar.ticker_name: bar for bar in brief.stock_bars.bars}
-
-    if not brief.stock_quotes.quotes:
-        empty = Text("No market data right now", style="italic bright_white")
-        return Panel(
-            empty,
-            title="📈 Markets",
-            border_style=BORDER_STOCKS,
-            title_align="left",
-        )
-
-    for quote in brief.stock_quotes.quotes:
-        bar = bars_by_ticker.get(quote.ticker_name)
-        as_of = _friendly_time(quote.time)
-
-        if bar is not None:
-            close_text, change_text = _close_and_change(bar.open, bar.close)
-        else:
-            close_text = Text("—", style=STYLE_META)
-            change_text = Text("—", style=STYLE_META)
-
-        table.add_row(
-            quote.ticker_name,
-            Text(_money(quote.bid_price), style=STYLE_MONEY),
-            Text(_money(quote.ask_price), style=STYLE_MONEY),
-            close_text,
-            change_text,
-            as_of,
-        )
-
-    symbols = ", ".join(brief.symbols)
-    return Panel(
-        table,
-        title=f"📈 Markets · {symbols}",
-        border_style=BORDER_STOCKS,
-        title_align="left",
+def _stocks(brief: DailyBrief, compact: bool):
+    return stocks_panel(
+        brief.stock_quotes,
+        brief.stock_bars,
+        symbols=brief.symbols,
+        failure=brief.failed("stocks"),
+        compact=compact,
     )
 
 
-def _money(value: float) -> str:
-    return f"${value:,.2f}"
-
-
-def _close_and_change(open_price: float, close_price: float) -> tuple[Text, Text]:
-    """Direction uses color and an arrow so meaning is not color-only."""
-    delta = close_price - open_price
-    if delta > 0:
-        style, arrow = STYLE_UP, "↑"
-    elif delta < 0:
-        style, arrow = STYLE_DOWN, "↓"
-    else:
-        style, arrow = STYLE_FLAT, "→"
-
-    close_text = Text(f"{arrow} {_money(close_price)}", style=style)
-    change_text = Text(f"{delta:+.2f}", style=style)
-    return close_text, change_text
-
-
-def _friendly_time(when: datetime) -> str:
-    if when.tzinfo is not None:
-        when = when.astimezone()
-    return when.strftime("%I:%M %p").lstrip("0")
-
-
-def _weather_panel(brief: DailyBrief) -> Panel:
-    """Next few hours of forecast for the brief city (unit-aware labels)."""
-    failure = brief.failed("weather")
-    if failure is not None:
-        return Panel(
-            _unavailable(failure),
-            title=f"🌤️  Weather · {brief.city}",
-            border_style=BORDER_WEATHER,
-            title_align="left",
-        )
-
-    hours = brief.weather.upcoming_hours(WEATHER_HOURS)
-
-    table = Table(
-        expand=True,
-        show_lines=False,
-        pad_edge=False,
-        header_style="bold bright_white",
-    )
-    table.add_column("When", style="bold", no_wrap=True)
-    table.add_column("", width=2, justify="center")
-    table.add_column("Temp", justify="right")
-    table.add_column("Feels", justify="right")
-    table.add_column("Rain", justify="right")
-
-    units = brief.weather_units
-
-    if not hours:
-        body: Table | Text = Text(
-            "No forecast data right now", style="italic bright_white"
-        )
-    else:
-        for hour in hours:
-            table.add_row(
-                hour.time.strftime("%m/%d %H:00"),
-                _weather_emoji(hour.weather_code),
-                _temp_text(hour.temperature, units=units),
-                _temp_text(hour.feels_like_temperature, units=units),
-                _rain_text(hour.chance_of_rain),
-            )
-        body = table
-
-    unit_label = "°F" if units == "imperial" else "°C"
-    return Panel(
-        body,
-        title=f"🌤️  Weather · {brief.city} · {unit_label}",
-        border_style=BORDER_WEATHER,
-        title_align="left",
+def _weather(brief: DailyBrief, compact: bool):
+    return weather_panel(
+        brief.weather,
+        city=brief.city,
+        units=brief.weather_units,
+        hours=WEATHER_HOURS,
+        failure=brief.failed("weather"),
+        compact=compact,
     )
 
 
-def _temp_text(temp: float, units: str = "metric") -> Text:
-    """Format temperature with °C/°F and hot/cold styling for *units*."""
-    if units == "imperial":
-        hot, cold, suffix = TEMP_HOT_F, TEMP_COLD_F, "°F"
-    else:
-        hot, cold, suffix = TEMP_HOT_C, TEMP_COLD_C, "°C"
-
-    if temp >= hot:
-        style = "bold bright_yellow"
-    elif temp <= cold:
-        style = "bold bright_cyan"
-    else:
-        style = "bright_white"
-    return Text(f"{temp:.1f}{suffix}", style=style)
-
-
-def _rain_text(chance: int) -> Text:
-    if chance >= RAIN_WET:
-        style = "bold bright_magenta"
-    elif chance >= RAIN_DRIZZLE:
-        style = "bold bright_yellow"
-    else:
-        style = "bright_green"
-    return Text(f"{chance}%", style=style)
-
-
-def _weather_emoji(weather_code: int) -> str:
-    """Map WMO weather codes (Open-Meteo) to a short emoji cue."""
-    if weather_code == 0:
-        return "☀️"
-    if weather_code in (1, 2):
-        return "🌤️"
-    if weather_code == 3:
-        return "☁️"
-    if weather_code in (45, 48):
-        return "🌫️"
-    if weather_code in (51, 53, 55, 56, 57):
-        return "🌦️"
-    if weather_code in (61, 63, 65, 66, 67, 80, 81, 82):
-        return "🌧️"
-    if weather_code in (71, 73, 75, 77, 85, 86):
-        return "❄️"
-    if weather_code in (95, 96, 99):
-        return "⛈️"
-    return "🌡️"
-
-
-def _headlines_panel(brief: DailyBrief) -> Panel:
-    """Headlines panel; source labels link to the article URL when possible."""
-    failure = brief.failed("news")
-    if failure is not None:
-        return Panel(
-            _unavailable(failure),
-            title=f"📰 Headlines · {brief.news_category}",
-            border_style=BORDER_HEADLINES,
-            title_align="left",
-        )
-
-    table = Table(
-        expand=True,
-        show_lines=False,
-        pad_edge=False,
-        header_style="bold bright_white",
-        collapse_padding=True,
-    )
-    table.add_column("#", style=STYLE_META, width=3, justify="right")
-    table.add_column("Headline", style=STYLE_HEADLINE, overflow="ellipsis", ratio=3)
-    table.add_column("Source", overflow="ellipsis", ratio=1)
-    table.add_column("Published", style=STYLE_META, no_wrap=True)
-
-    items = brief.headlines.headlines[:HEADLINE_LIMIT]
-
-    if not items:
-        body: Table | Text = Text(
-            "No headlines right now", style="italic bright_white"
-        )
-    else:
-        for index, item in enumerate(items, start=1):
-            table.add_row(
-                str(index),
-                item.headline,
-                _source_link(item.publication, item.source_url),
-                _friendly_published(item.published_time),
-            )
-        body = table
-
-    return Panel(
-        body,
-        title=f"📰 Headlines · {brief.news_category}",
-        border_style=BORDER_HEADLINES,
-        title_align="left",
+def _news(brief: DailyBrief, compact: bool):
+    return headlines_panel(
+        brief.headlines,
+        category=brief.news_category,
+        limit=HEADLINE_LIMIT,
+        failure=brief.failed("news"),
+        compact=compact,
     )
 
 
-def _source_link(publication: str, url: str | None) -> Text:
-    """Underline the publication name and attach a terminal hyperlink."""
-    label = publication or "Source"
-    if url:
-        style = Style(color="bright_blue", bold=True, underline=True, link=url)
-        return Text(label, style=style)
-    return Text(label, style=STYLE_SOURCE)
-
-
-def _friendly_published(when: datetime) -> str:
-    if when.tzinfo is not None:
-        when = when.astimezone()
-    return when.strftime("%b %d · %H:%M")
+#: Panel builder per brief domain.
+_PANELS = {"stocks": _stocks, "weather": _weather, "news": _news}
