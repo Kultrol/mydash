@@ -1,148 +1,242 @@
-"""Tests for mydash.client.news.noozra."""
+"""Tests for the Noozra news provider.
+
+Strategy: inject a FakeHttpClient (see test/conftest.py) and assert on ordering,
+deduplication, and how gracefully malformed articles are handled.
+"""
 
 import asyncio
-
-from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timezone
 
 import pytest
 
-from mydash.client.http_api.http_api import HttpApiClient
-from mydash.client.news.base import NewsClient
+from mydash.client.news.base_errors import NewsClientError
 from mydash.client.news.factory import get_news_client
 from mydash.client.news.providers.noozra.errors import (
-    HeadlineSettingError,
     MissingArticlesError,
-    MissingNewsHeadlinesError,
+    NoUsableArticlesError,
     ParameterSettingError,
 )
+from mydash.client.news.providers.noozra.noozra import NoozraClient
 from mydash.models.news import NewsHeadlines
+from mydash.storage.cache import TTL
+from test.conftest import FakeHttpClient
 
-# ======================================
-# ***** Testing set_news_headlines *****
-# ======================================
 
-# -----------------------------------
-# Stage 1: Parameter Input Validation | TESTING COMPLETE : 07/09/26
-# -----------------------------------
+def _article(
+    headline="Something happened",
+    url="https://example.com/1",
+    published_at="2026-08-30T12:00:00Z",
+    **extra,
+):
+    return {
+        "headline": headline,
+        "source": "Example Times",
+        "description": "A description.",
+        "url": url,
+        "category": "tech",
+        "published_at": published_at,
+        **extra,
+    }
+
+
+def _fetch(http, category="tech", **kwargs) -> NewsHeadlines:
+    return asyncio.run(NoozraClient(http_client=http).fetch_headlines(category, **kwargs))
+
+
+# --- happy path -----------------------------------------------------------
+
+
+def test_fetch_returns_parsed_headlines():
+    http = FakeHttpClient({"articles": [_article()]})
+
+    result = _fetch(http)
+
+    assert len(result.headlines) == 1
+    item = result.headlines[0]
+    assert item.headline == "Something happened"
+    assert item.publication == "Example Times"
+    assert item.description == "A description."
+    assert item.source_url == "https://example.com/1"
+    assert item.category == "tech"
+
+
+def test_request_sends_normalized_category_and_caches():
+    http = FakeHttpClient({"articles": [_article()]})
+
+    _fetch(http, "  TECH  ")
+
+    assert http.parameters()["category"] == "tech"
+    assert http.calls[0]["cache_ttl"] == TTL["news"]
+
+
+def test_headlines_come_back_newest_first():
+    http = FakeHttpClient(
+        {
+            "articles": [
+                _article(headline="older", url="https://example.com/1",
+                         published_at="2026-08-28T09:00:00Z"),
+                _article(headline="newest", url="https://example.com/2",
+                         published_at="2026-08-30T09:00:00Z"),
+                _article(headline="middle", url="https://example.com/3",
+                         published_at="2026-08-29T09:00:00Z"),
+            ]
+        }
+    )
+
+    assert [item.headline for item in _fetch(http).headlines] == [
+        "newest",
+        "middle",
+        "older",
+    ]
+
+
+def test_mixed_aware_and_naive_timestamps_still_sort():
+    http = FakeHttpClient(
+        {
+            "articles": [
+                _article(headline="naive", url="https://example.com/1",
+                         published_at="2026-08-28T09:00:00"),
+                _article(headline="aware", url="https://example.com/2",
+                         published_at="2026-08-30T09:00:00Z"),
+            ]
+        }
+    )
+
+    assert [item.headline for item in _fetch(http).headlines] == ["aware", "naive"]
+
+
+def test_duplicate_urls_are_collapsed():
+    http = FakeHttpClient(
+        {
+            "articles": [
+                _article(headline="first copy", url="https://example.com/same"),
+                _article(headline="second copy", url="https://example.com/same"),
+            ]
+        }
+    )
+
+    result = _fetch(http)
+
+    assert [item.headline for item in result.headlines] == ["first copy"]
+
+
+def test_limit_caps_the_result():
+    http = FakeHttpClient(
+        {
+            "articles": [
+                _article(url=f"https://example.com/{index}") for index in range(10)
+            ]
+        }
+    )
+
+    assert len(_fetch(http, limit=3).headlines) == 3
+
+
+def test_limit_of_zero_returns_nothing():
+    http = FakeHttpClient({"articles": [_article()]})
+
+    assert _fetch(http, limit=0).headlines == []
+
+
+def test_default_limit_is_twenty():
+    http = FakeHttpClient(
+        {
+            "articles": [
+                _article(url=f"https://example.com/{index}") for index in range(30)
+            ]
+        }
+    )
+
+    assert len(_fetch(http).headlines) == 20
+
+
+def test_missing_category_falls_back_to_the_requested_one():
+    http = FakeHttpClient({"articles": [_article(category=None)]})
+
+    assert _fetch(http, "science").headlines[0].category == "science"
+
+
+def test_missing_description_is_allowed():
+    http = FakeHttpClient({"articles": [_article(description=None)]})
+
+    assert _fetch(http).headlines[0].description is None
+
+
+# --- resilient parsing ----------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    argnames="mock_category, expected_error",
-    argvalues=[
-        (2, ParameterSettingError),
-        (None, ParameterSettingError),
-        ({}, ParameterSettingError),
+    "broken",
+    [
+        {"headline": "no url", "source": "X", "published_at": "2026-08-30T12:00:00Z"},
+        {"url": "https://example.com/x", "source": "X"},
+        {"headline": "bad date", "source": "X", "url": "https://example.com/y",
+         "published_at": "sometime last week"},
+        "not even a dict",
+        None,
     ],
 )
-def test_set_news_headlines_bad_input_raise_parameter_setting_error(
-    mock_category, expected_error
-):
-    news_client: NewsClient = get_news_client()
-    with pytest.raises(expected_exception=expected_error) as err:
-        asyncio.run(news_client.set_news_headlines(category=mock_category))
+def test_one_malformed_article_does_not_sink_the_batch(broken):
+    http = FakeHttpClient({"articles": [broken, _article(headline="good")]})
 
-    assert isinstance(err.value, expected_error)
+    result = _fetch(http)
+
+    assert [item.headline for item in result.headlines] == ["good"]
 
 
-# -----------------------------
-# Stage 2:  Response Checking | TESTING COMPLETE : 07/09/26
-# ----------------------------
+def test_all_articles_malformed_raises_no_usable_articles():
+    http = FakeHttpClient({"articles": [{"nope": True}, {"also": "nope"}]})
+
+    with pytest.raises(NoUsableArticlesError) as err:
+        _fetch(http)
+
+    assert isinstance(err.value, NewsClientError)
 
 
-@pytest.mark.parametrize(
-    argnames="mock_response, expected_error",
-    argvalues=[
-        ({}, MissingArticlesError),
-        ({"error": "something bad"}, MissingArticlesError),
-        ({"results": []}, MissingArticlesError),
-    ],
-)
-def test_set_news_headlines_bad_api_response_rasied_missing_articles_error(
-    monkeypatch, mock_response, expected_error
-):
-    news_client = get_news_client()
+def test_non_list_articles_raises_no_usable_articles():
+    http = FakeHttpClient({"articles": {"headline": "not a list"}})
 
-    mock_make_request = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_make_request)
-
-    with pytest.raises(expected_error) as err:
-        asyncio.run(news_client.set_news_headlines(category="politics"))
-    assert isinstance(err.value, expected_error)
+    with pytest.raises(NoUsableArticlesError):
+        _fetch(http)
 
 
-# ---------------------------------------------------
-# Stage 3:  Headline Creation and Headlines Setting | TESTING COMPLETE : 07/09/26
-# ---------------------------------------------------
+# --- error paths ----------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    argnames="mock_response, expected_error",
-    argvalues=[
-        ({"articles": [{"bob": "joe"}]}, HeadlineSettingError),
-        (
-            {"articles": [{"headline": "Hey Joe.(Check JimiHendrix's 'Hey Joe')"}]},
-            HeadlineSettingError,
-        ),
-    ],
-)
-def test_set_news_headlines_failed_headline_validation(
-    monkeypatch, mock_response, expected_error
-):
-    news_client = get_news_client()
+@pytest.mark.parametrize("payload", [{}, {"articles": []}, {"articles": None}])
+def test_no_articles_raises_missing_articles(payload):
+    with pytest.raises(MissingArticlesError) as err:
+        _fetch(FakeHttpClient(payload), "politics")
 
-    mock_make_request = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_make_request)
-
-    with pytest.raises(expected_error) as err:
-        asyncio.run(news_client.set_news_headlines(category="politics"))
-    assert isinstance(err.value, expected_error)
+    assert "politics" in str(err.value)
+    assert isinstance(err.value, NewsClientError)
 
 
-# ======================================
-# ***** Testing get_news_headlines ***** | TESTING COMPLETE : 07/09/26
-# ======================================
+@pytest.mark.parametrize("category", ["", "   "])
+def test_blank_category_raises_parameter_setting_error(category):
+    with pytest.raises(ParameterSettingError):
+        _fetch(FakeHttpClient(), category)
 
 
-# Test case "happy path" in which 'set_headlines' properly fetched and set headlines, which allowed 'get_headlines' to return a NewsHeadlines type.
-@pytest.mark.parametrize(
-    argnames="mock_params, mock_api_response",
-    argvalues=[
-        (
-            "politics",
-            {
-                "articles": [
-                    {
-                        "headline": "Some scandle",
-                        "source": "credible outlet",
-                        "description": "famous people involved in a scandle you'll forget about tomorrow.",
-                        "url": "https://whocares.com",
-                        "category": "politics",
-                        "published_at": "2026-07-09T17:06:03Z",
-                    }
-                ]
-            },
-        )
-    ],
-)
-def test_get_news_headlines_valid_api_response_return_news_headlines(
-    monkeypatch: pytest.MonkeyPatch, mock_params, mock_api_response
-):
-    news_client = get_news_client()
-
-    mock_response = AsyncMock(return_value=mock_api_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_response)
-
-    asyncio.run(news_client.set_news_headlines(category=mock_params))
-
-    client_headlines = news_client.get_news_headlines()
-
-    assert isinstance(client_headlines, NewsHeadlines)
+def test_http_errors_propagate():
+    with pytest.raises(RuntimeError, match="network down"):
+        _fetch(FakeHttpClient(RuntimeError("network down")))
 
 
-# Test case in which 'self.news_headlines' is of type None -> raises MissingNewsHeadlinesError
-def test_get_news_headlines_missing_headlines_raises_missing_headlines_error():
-    news_client = get_news_client()
+# --- factory wiring -------------------------------------------------------
 
-    with pytest.raises(MissingNewsHeadlinesError) as err:
-        _ = news_client.get_news_headlines()
-    assert isinstance(err.value, MissingNewsHeadlinesError)
+
+def test_factory_passes_the_shared_http_client_through():
+    http = FakeHttpClient({"articles": [_article()]})
+    client = get_news_client("noozra", http_client=http)
+
+    assert client.http_client is http
+    assert asyncio.run(client.fetch_headlines("tech")).headlines
+
+
+def test_published_time_keeps_its_timezone():
+    http = FakeHttpClient({"articles": [_article(published_at="2026-08-30T12:00:00Z")]})
+
+    assert _fetch(http).headlines[0].published_time == datetime(
+        2026, 8, 30, 12, 0, tzinfo=timezone.utc
+    )
