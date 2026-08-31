@@ -1,512 +1,277 @@
-"""Tests for mydash.client.weather.open_meteo."""
+"""Tests for the Open-Meteo weather provider.
+
+Strategy: inject a FakeHttpClient (see test/conftest.py) and assert on the
+query mydash sends and the forecast it parses back.
+"""
 
 import asyncio
-
-from unittest.mock import AsyncMock, MagicMock
+from datetime import date, datetime
 
 import pytest
+from pydantic import ValidationError
 
-from mydash.models.geocoding import Coordinates
-from mydash.client.http_api.http_api import HttpApiClient
+from mydash.client.weather.base_errors import WeatherClientError
 from mydash.client.weather.factory import get_weather_client
 from mydash.client.weather.providers.open_meteo.errors import (
-    CoordinateSettingError,
     HourForecastSettingError,
-    MissingCoordinatesError,
-    MissingWeatherForecastError,
     ParameterSettingError,
     ResponseError,
 )
-from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
+from mydash.client.weather.providers.open_meteo.open_meteo import OpenMeteoClient
+from mydash.client.weather.providers.open_meteo.schemas import UNITS_PRESETS
+from mydash.models.geocoding import Coordinates
+from mydash.models.weather import MultiDayForecast
+from mydash.storage.cache import TTL
+from test.conftest import FakeHttpClient
 
-# =====================================
-# ***** Testing 'set_coordinates' ***** | TESTING COMPLETE : 07/09/26
-# =====================================
+MIAMI = Coordinates(latitude=25.7617, longitude=-80.1918)
 
-
-# Test case: Invalid Coordinate Input -> raise CoordinateSettingError
-@pytest.mark.parametrize(
-    argnames="mock_bad_input, expected_error",
-    argvalues=[
-        (None, CoordinateSettingError),
-        (2, CoordinateSettingError),
-        ("bobby", CoordinateSettingError),
-    ],
+HOURLY_KEYS = (
+    "temperature_2m",
+    "apparent_temperature",
+    "precipitation_probability",
+    "precipitation",
+    "weather_code",
+    "cloud_cover",
+    "wind_speed_10m",
+    "uv_index",
 )
-def test_set_coordinates_invalid_input_raise_coordinate_setting_error(
-    mock_bad_input, expected_error
-):
-    weather_client = get_weather_client()
-
-    with pytest.raises(expected_error) as err:
-        weather_client.set_coordinates(mock_bad_input)
-    assert isinstance(err.value, expected_error)
 
 
-# Test case: Valid Coordinate Input -> sets coordinates 'self.coordinates'
-@pytest.mark.parametrize(
-    argnames="mock_valid_input, expected_result",
-    argvalues=[
-        (
-            Coordinates(latitude=90, longitude=20),
-            Coordinates(latitude=90, longitude=20),
-        ),
-        (
-            Coordinates(latitude=60, longitude=80),
-            Coordinates(latitude=60, longitude=80),
-        ),
-        (
-            Coordinates(latitude=20, longitude=50),
-            Coordinates(latitude=20, longitude=50),
-        ),
-        (
-            Coordinates(latitude=30, longitude=20),
-            Coordinates(latitude=30, longitude=20),
-        ),
-    ],
-)
-def test_set_coordinates_valid_input_set_coordinates(mock_valid_input, expected_result):
-    weather_client = get_weather_client()
-    weather_client.set_coordinates(mock_valid_input)
-
-    assert weather_client.coordinates == expected_result
-
-
-# =======================================
-# ***** Testing 'get_coordinates' ***** |
-# =======================================
-
-
-# Test Case: Valid Coordinates have been set -> Return Coordinates
-@pytest.mark.parametrize(
-    argnames="mock_coordinates, expected_results",
-    argvalues=[
-        (
-            Coordinates(latitude=50, longitude=50),
-            Coordinates(latitude=50, longitude=50),
-        ),
-        (
-            Coordinates(latitude=20, longitude=50),
-            Coordinates(latitude=20, longitude=50),
-        ),
-        (
-            Coordinates(latitude=50, longitude=30),
-            Coordinates(latitude=50, longitude=30),
-        ),
-        (
-            Coordinates(latitude=50, longitude=50),
-            Coordinates(latitude=50, longitude=50),
-        ),
-    ],
-)
-def test_get_coordinates_valid_coordinates_return_coordinates(
-    mock_coordinates, expected_results
-):
-    weather_client = get_weather_client()
-    weather_client.set_coordinates(coordinates=mock_coordinates)
-    client_coordinates = weather_client.get_coordinates()
-
-    assert client_coordinates == expected_results
-
-
-# Test Case: No Coordinates have been set -> Raise MissingCoordinatesError
-def test_get_coordinates_no_coordinates_raise_missing_coordinates_error():
-    weather_client = get_weather_client()
-
-    with pytest.raises(MissingCoordinatesError) as err:
-        weather_client.get_coordinates()
-    assert isinstance(err.value, MissingCoordinatesError)
-
-
-# ============================================
-# ***** Testing 'set_weather_forecast' ***** |
-# ============================================
-
-
-# Test Case: Bad Parameters lead to validation error -> Raise ParameterSettingError
-@pytest.mark.parametrize(
-    argnames="mock_coordinates, mock_forecast_length, mock_backwardcast_length, expected_error",
-    argvalues=[
-        (Coordinates(latitude=20, longitude=20), None, 1, ParameterSettingError),
-        (Coordinates(latitude=20, longitude=20), 1, None, ParameterSettingError),
-        (
-            Coordinates(latitude=20, longitude=20),
-            "some_thing",
-            1,
-            ParameterSettingError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            "some_thing",
-            ParameterSettingError,
-        ),
-        (Coordinates(latitude=20, longitude=20), -20, 1, ParameterSettingError),
-        (Coordinates(latitude=20, longitude=20), 1, -20, ParameterSettingError),
-        (Coordinates(latitude=20, longitude=20), None, None, ParameterSettingError),
-        (
-            Coordinates(latitude=20, longitude=20),
-            "some_thing",
-            -20,
-            ParameterSettingError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            -20,
-            "some_thing",
-            ParameterSettingError,
-        ),
-    ],
-)
-def test_set_weather_forecast_bad_parameter_values_raise_parameter_setting_error(
-    mock_coordinates, mock_forecast_length, mock_backwardcast_length, expected_error
-):
-    weather_client = get_weather_client()
-    weather_client.set_coordinates(mock_coordinates)
-    with pytest.raises(expected_error) as err:
-        asyncio.run(
-            weather_client.set_weather_forecast(
-            forecast_length=mock_forecast_length,
-            backwardcast_length=mock_backwardcast_length,
-            )
-        )
-    assert isinstance(err.value, expected_error)
-
-
-# Test Case: Bad API responses(e.g. missing keys) -> Raise ResponseError
-@pytest.mark.parametrize(
-    argnames="mock_coordinates, mock_forecast_length, mock_backwardcast_length, mock_response, expected_error",
-    argvalues=[
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {},
-            ResponseError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {"hourly": []},
-            ResponseError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {"hourly": {"time": ["2026-07-08T00:00"]}},
-            ResponseError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {
-                "hourly": {
-                    "time": ["2026-07-08T00:00"],
-                    "apparent_temperature": [20.4],
-                    "precipitation_probability": [0],
-                    "precipitation": [0],
-                    "weather_code": [1],
-                    "cloud_cover": [63],
-                    "wind_speed_10m": [12.7],
-                    "uv_index": [1.55],
-                }
-            },
-            ResponseError,
-        ),
-    ],
-)
-def test_set_weather_forecast_bad_api_response_raise_response_error(
-    monkeypatch: pytest.MonkeyPatch,
-    mock_coordinates,
-    mock_forecast_length,
-    mock_backwardcast_length,
-    mock_response,
-    expected_error,
-):
-    weather_client = get_weather_client()
-    weather_client.set_coordinates(mock_coordinates)
-
-    mock_api_response = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
-
-    with pytest.raises(expected_error) as err:
-        asyncio.run(
-            weather_client.set_weather_forecast(
-            forecast_length=mock_forecast_length,
-            backwardcast_length=mock_backwardcast_length,
-            )
-        )
-    assert isinstance(err.value, expected_error)
-
-
-# Test Case: Validation error when creating a 'hour_forecast' instance -> Raise HourForecastSettingError
-@pytest.mark.parametrize(
-    argnames="mock_coordinates, mock_forecast_length, mock_backwardcast_length, mock_response, expected_error",
-    argvalues=[
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {
-                "hourly": {
-                    "time": ["2026-07-08T00:00"],
-                    "temperature_2m": ["something"],
-                    "apparent_temperature": [20.4],
-                    "precipitation_probability": [0],
-                    "precipitation": [0],
-                    "weather_code": [1],
-                    "cloud_cover": [63],
-                    "wind_speed_10m": [12.7],
-                    "uv_index": [1.55],
-                }
-            },
-            HourForecastSettingError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {
-                "hourly": {
-                    "time": ["2026-07-08T00:00"],
-                    "temperature_2m": [20.3],
-                    "apparent_temperature": [20.4],
-                    "precipitation_probability": [0],
-                    "precipitation": [0],
-                    "weather_code": [None],
-                    "cloud_cover": [63],
-                    "wind_speed_10m": [12.7],
-                    "uv_index": [1.55],
-                }
-            },
-            HourForecastSettingError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {
-                "hourly": {
-                    "time": ["2026-07-08T00:00"],
-                    "temperature_2m": [20.4],
-                    "apparent_temperature": [20.4],
-                    "precipitation_probability": [0],
-                    "precipitation": [0],
-                    "weather_code": [1],
-                    "cloud_cover": [{"some key": "some value"}],
-                    "wind_speed_10m": [12.7],
-                    "uv_index": [None],
-                }
-            },
-            HourForecastSettingError,
-        ),
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {
-                "hourly": {
-                    "time": ["2026-07-08T00:00"],
-                    "temperature_2m": [20.3],
-                    "apparent_temperature": [20.4],
-                    "precipitation_probability": [0],
-                    "precipitation": [0],
-                    "weather_code": [1],
-                    "cloud_cover": [None],
-                    "wind_speed_10m": [12.7],
-                    "uv_index": [1.55],
-                }
-            },
-            HourForecastSettingError,
-        ),
-    ],
-)
-def test_set_weather_forecast_hour_forecast_validation_failure_raise_hour_forecast_setting_error(
-    monkeypatch: pytest.MonkeyPatch,
-    mock_coordinates,
-    mock_forecast_length,
-    mock_backwardcast_length,
-    mock_response,
-    expected_error,
-):
-    weather_client = get_weather_client()
-    weather_client.set_coordinates(mock_coordinates)
-
-    mock_api_response = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
-
-    with pytest.raises(expected_error) as err:
-        asyncio.run(
-            weather_client.set_weather_forecast(
-            forecast_length=mock_forecast_length,
-            backwardcast_length=mock_backwardcast_length,
-            )
-        )
-    assert isinstance(err.value, expected_error)
-
-
-# ============================================
-# ***** Testing 'get_weather_forecast' ***** |
-# ============================================
-
-
-# Test Case: Missing Weather(i.e. 'self.weather_forecast == None') -> Raise MissingWeatherForecastError
-def test_get_weather_forecast_missing_weather_raise_missing_weather_forecast_error():
-    weather_client = get_weather_client()
-
-    with pytest.raises(MissingWeatherForecastError) as err:
-        weather_client.get_weather_forecast()
-    assert isinstance(err.value, MissingWeatherForecastError)
-
-
-# Test Case: Valid weather forecast set by 'set_weather_forecast' -> Return MultiDayForecast
-@pytest.mark.parametrize(
-    argnames="mock_coordinates, mock_forecast_length, mock_backwardcast_length, mock_response, expected_result",
-    argvalues=[
-        (
-            Coordinates(latitude=20, longitude=20),
-            1,
-            1,
-            {
-                "hourly": {
-                    "time": ["2026-07-08T00:00"],
-                    "temperature_2m": [23.4],
-                    "apparent_temperature": [20.4],
-                    "precipitation_probability": [0],
-                    "precipitation": [0],
-                    "weather_code": [1],
-                    "cloud_cover": [63],
-                    "wind_speed_10m": [12.7],
-                    "uv_index": [1.55],
-                }
-            },
-            MultiDayForecast(
-                days=[
-                    DayForecast(
-                        month=7,
-                        day=8,
-                        hours=[
-                            HourForecast(
-                                hour=0,
-                                temperature=23.4,
-                                feels_like_temperature=20.4,
-                                cloud_cover=63,
-                                wind_speed=12.7,
-                                chance_of_rain=0,
-                                amount_of_rain=0,
-                                weather_code=1,
-                                uv_index=1.55,
-                            )
-                        ],
-                    )
-                ]
-            ),
-        )
-    ],
-)
-def test_get_weather_found_weather_return_weather_forecast(
-    monkeypatch: pytest.MonkeyPatch,
-    mock_coordinates,
-    mock_forecast_length,
-    mock_backwardcast_length,
-    mock_response,
-    expected_result: MultiDayForecast,
-):
-    weather_client = get_weather_client("open-meteo")
-
-    weather_client.set_coordinates(mock_coordinates)
-
-    mock_api_response = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
-
-    asyncio.run(
-        weather_client.set_weather_forecast(
-        forecast_length=mock_forecast_length,
-        backwardcast_length=mock_backwardcast_length,
-        )
-    )
-
-    weather_forecast = weather_client.get_weather_forecast()
-
-    request_params = mock_api_response.call_args.kwargs["parameters"]
-    assert request_params["temperature_unit"] == "celsius"
-    assert request_params["wind_speed_unit"] == "kmh"
-    assert request_params["precipitation_unit"] == "mm"
-
-    assert weather_forecast.days[0].day == expected_result.days[0].day
-    assert weather_forecast.days[0].month == expected_result.days[0].month
-    assert (
-        weather_forecast.days[0].hours[0].amount_of_rain
-        == expected_result.days[0].hours[0].amount_of_rain
-    )
-    assert (
-        weather_forecast.days[0].hours[0].chance_of_rain
-        == expected_result.days[0].hours[0].chance_of_rain
-    )
-    assert (
-        weather_forecast.days[0].hours[0].cloud_cover
-        == expected_result.days[0].hours[0].cloud_cover
-    )
-    assert (
-        weather_forecast.days[0].hours[0].feels_like_temperature
-        == expected_result.days[0].hours[0].feels_like_temperature
-    )
-    assert (
-        weather_forecast.days[0].hours[0].temperature
-        == expected_result.days[0].hours[0].temperature
-    )
-    assert (
-        weather_forecast.days[0].hours[0].uv_index
-        == expected_result.days[0].hours[0].uv_index
-    )
-    assert (
-        weather_forecast.days[0].hours[0].weather_code
-        == expected_result.days[0].hours[0].weather_code
-    )
-    assert (
-        weather_forecast.days[0].hours[0].wind_speed
-        == expected_result.days[0].hours[0].wind_speed
-    )
-    assert (
-        weather_forecast.days[0].hours[0].hour == expected_result.days[0].hours[0].hour
-    )
-    assert isinstance(weather_forecast, MultiDayForecast)
-
-
-def test_set_weather_forecast_imperial_units_in_request_params(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    weather_client = get_weather_client("open-meteo")
-    weather_client.set_coordinates(Coordinates(latitude=20, longitude=20))
-
-    mock_response = {
-        "hourly": {
-            "time": ["2026-07-08T00:00"],
-            "temperature_2m": [74.0],
-            "apparent_temperature": [72.0],
-            "precipitation_probability": [0],
-            "precipitation": [0],
-            "weather_code": [1],
-            "cloud_cover": [10],
-            "wind_speed_10m": [8.0],
-            "uv_index": [1.0],
-        }
+def _hourly(times: list[str]) -> dict:
+    """Build parallel hourly arrays matching *times*."""
+    count = len(times)
+    return {
+        "time": times,
+        "temperature_2m": [20.0 + index for index in range(count)],
+        "apparent_temperature": [21.0 + index for index in range(count)],
+        "precipitation_probability": [10 * index for index in range(count)],
+        "precipitation": [0.1 * index for index in range(count)],
+        "weather_code": [0] * count,
+        "cloud_cover": [5 * index for index in range(count)],
+        "wind_speed_10m": [3.0] * count,
+        "uv_index": [4.0] * count,
     }
-    mock_api_response = AsyncMock(return_value=mock_response)
-    monkeypatch.setattr(HttpApiClient, "make_request", mock_api_response)
 
-    asyncio.run(
-        weather_client.set_weather_forecast(
-        forecast_length=1,
-        backwardcast_length=0,
-        units="imperial",
-        )
+
+def _daily(days: list[str]) -> dict:
+    return {
+        "time": days,
+        "temperature_2m_max": [31.0] * len(days),
+        "temperature_2m_min": [22.0] * len(days),
+        "precipitation_probability_max": [40] * len(days),
+        "sunrise": [f"{day}T06:45" for day in days],
+        "sunset": [f"{day}T19:55" for day in days],
+    }
+
+
+def _payload(times=None, days=None, timezone="America/New_York") -> dict:
+    times = times or ["2026-08-30T00:00", "2026-08-30T01:00", "2026-08-31T00:00"]
+    days = days or ["2026-08-30", "2026-08-31"]
+    return {"timezone": timezone, "hourly": _hourly(times), "daily": _daily(days)}
+
+
+def _fetch(http, **kwargs) -> MultiDayForecast:
+    return asyncio.run(
+        OpenMeteoClient(http_client=http).fetch_forecast(MIAMI, **kwargs)
     )
 
-    request_params = mock_api_response.call_args.kwargs["parameters"]
-    assert request_params["temperature_unit"] == "fahrenheit"
-    assert request_params["wind_speed_unit"] == "mph"
-    assert request_params["precipitation_unit"] == "inch"
+
+# --- request shape --------------------------------------------------------
+
+
+def test_request_sends_coordinates_units_and_local_timezone():
+    http = FakeHttpClient(_payload())
+
+    _fetch(http, days=2, past_days=1, units="imperial")
+
+    params = http.parameters()
+    assert params["latitude"] == MIAMI.latitude
+    assert params["longitude"] == MIAMI.longitude
+    assert params["forecast_days"] == 2
+    assert params["past_days"] == 1
+    assert params["timezone"] == "auto"
+    for key in HOURLY_KEYS:
+        assert key in params["hourly"]
+    assert "temperature_2m_max" in params["daily"]
+    assert "sunrise" in params["daily"]
+    assert http.calls[0]["cache_ttl"] == TTL["weather"]
+
+
+@pytest.mark.parametrize("units", sorted(UNITS_PRESETS))
+def test_unit_presets_map_to_provider_fields(units):
+    http = FakeHttpClient(_payload())
+
+    _fetch(http, units=units)
+
+    params = http.parameters()
+    expected = UNITS_PRESETS[units]
+    assert params["temperature_unit"] == expected["temperature_unit"]
+    assert params["wind_speed_unit"] == expected["wind_speed_unit"]
+    assert params["precipitation_unit"] == expected["precipitation_unit"]
+
+
+def test_unknown_units_raise_value_error():
+    http = FakeHttpClient()
+
+    with pytest.raises(ValueError, match="invalid weather units"):
+        _fetch(http, units="kelvin")
+
+
+@pytest.mark.parametrize("days, past_days", [(0, 0), (17, 0), (1, 4), (1, -1)])
+def test_out_of_range_day_counts_raise_parameter_setting_error(days, past_days):
+    http = FakeHttpClient()
+
+    with pytest.raises(ParameterSettingError):
+        _fetch(http, days=days, past_days=past_days)
+
+
+# --- parsing --------------------------------------------------------------
+
+
+def test_hours_are_grouped_into_calendar_days():
+    forecast = _fetch(FakeHttpClient(_payload()))
+
+    assert [day.date for day in forecast.days] == [
+        date(2026, 8, 30),
+        date(2026, 8, 31),
+    ]
+    assert len(forecast.days[0].hours) == 2
+    assert len(forecast.days[1].hours) == 1
+
+
+def test_hour_fields_are_mapped_from_provider_keys():
+    forecast = _fetch(FakeHttpClient(_payload()))
+
+    hour = forecast.days[0].hours[0]
+    assert hour.time == datetime(2026, 8, 30, 0, 0)
+    assert hour.hour == 0
+    assert hour.temperature == 20.0
+    assert hour.feels_like_temperature == 21.0
+    assert hour.chance_of_rain == 0
+    assert hour.cloud_cover == 0
+    assert hour.wind_speed == 3.0
+    assert hour.uv_index == 4.0
+
+
+def test_timezone_is_carried_on_the_forecast():
+    forecast = _fetch(FakeHttpClient(_payload(timezone="Asia/Tokyo")))
+
+    assert forecast.timezone == "Asia/Tokyo"
+
+
+def test_daily_summary_is_attached_to_its_day():
+    forecast = _fetch(FakeHttpClient(_payload()))
+
+    summary = forecast.days[0].summary
+    assert summary is not None
+    assert summary.high == 31.0
+    assert summary.low == 22.0
+    assert summary.max_chance_of_rain == 40
+    assert summary.sunrise == datetime(2026, 8, 30, 6, 45)
+    assert summary.sunset == datetime(2026, 8, 30, 19, 55)
+
+
+def test_missing_daily_block_is_tolerated():
+    payload = _payload()
+    del payload["daily"]
+
+    forecast = _fetch(FakeHttpClient(payload))
+
+    assert forecast.days[0].summary is None
+    assert forecast.days[0].hours  # the hourly forecast still arrived
+
+
+def test_unparsable_daily_entries_are_skipped():
+    payload = _payload()
+    payload["daily"]["sunrise"] = ["not a time", "also not a time"]
+    payload["daily"]["temperature_2m_max"] = [31.0, 30.0]
+
+    summary = _fetch(FakeHttpClient(payload)).days[0].summary
+
+    assert summary is not None
+    assert summary.sunrise is None
+    assert summary.high == 31.0
+
+
+def test_daily_block_shorter_than_the_hourly_range_is_tolerated():
+    payload = _payload(days=["2026-08-30"])
+
+    forecast = _fetch(FakeHttpClient(payload))
+
+    assert forecast.days[0].summary is not None
+    assert forecast.days[1].summary is None
+
+
+# --- error paths ----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"hourly": {}}, {"hourly": None}, {"hourly": {"temperature_2m": [1.0]}}],
+)
+def test_missing_hourly_series_raises_response_error(payload):
+    with pytest.raises(ResponseError) as err:
+        _fetch(FakeHttpClient(payload))
+
+    assert isinstance(err.value, WeatherClientError)
+    assert "Response error" in str(err.value)
+
+
+def test_missing_hourly_field_raises_response_error():
+    payload = _payload()
+    del payload["hourly"]["uv_index"]
+
+    with pytest.raises(ResponseError):
+        _fetch(FakeHttpClient(payload))
+
+
+def test_short_hourly_series_raises_response_error():
+    payload = _payload()
+    payload["hourly"]["temperature_2m"] = [20.0]  # shorter than "time"
+
+    with pytest.raises(ResponseError):
+        _fetch(FakeHttpClient(payload))
+
+
+def test_unparsable_hourly_timestamp_raises_response_error():
+    payload = _payload()
+    payload["hourly"]["time"] = ["yesterday", "today", "tomorrow"]
+
+    with pytest.raises(ResponseError):
+        _fetch(FakeHttpClient(payload))
+
+
+def test_invalid_hour_values_raise_hour_forecast_setting_error():
+    payload = _payload()
+    payload["hourly"]["temperature_2m"] = ["warm", "warmer", "warmest"]
+
+    with pytest.raises(HourForecastSettingError):
+        _fetch(FakeHttpClient(payload))
+
+
+def test_http_errors_propagate():
+    with pytest.raises(RuntimeError, match="network down"):
+        _fetch(FakeHttpClient(RuntimeError("network down")))
+
+
+# --- coordinates ----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "latitude, longitude", [(91, 0), (-91, 0), (0, 181), (0, -181)]
+)
+def test_out_of_range_coordinates_are_rejected_by_the_model(latitude, longitude):
+    with pytest.raises(ValidationError):
+        Coordinates(latitude=latitude, longitude=longitude)
+
+
+# --- factory wiring -------------------------------------------------------
+
+
+def test_factory_passes_the_shared_http_client_through():
+    http = FakeHttpClient(_payload())
+    client = get_weather_client("open-meteo", http_client=http)
+
+    assert client.http_client is http
+    assert asyncio.run(client.fetch_forecast(MIAMI)).days

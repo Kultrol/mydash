@@ -3,7 +3,7 @@
 Strategy: CliRunner for command smoke; mock services (not HTTP) for brief.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from typer.testing import CliRunner
@@ -56,11 +56,10 @@ def _sample_brief() -> DailyBrief:
         weather=MultiDayForecast(
             days=[
                 DayForecast(
-                    month=7,
-                    day=13,
+                    date=date(2026, 7, 13),
                     hours=[
                         HourForecast(
-                            hour=12,
+                            time=datetime(2026, 7, 13, 12),
                             temperature=25.0,
                             feels_like_temperature=26.0,
                             cloud_cover=10,

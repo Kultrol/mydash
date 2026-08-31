@@ -64,7 +64,7 @@ class BriefService:
             WeatherService(
                 weather_provider=cfg.provider_weather,
                 geocoding_provider=cfg.provider_geocoding,
-            ).fetch_today_weather_forecast(city=cfg.city, units=cfg.weather_units),
+            ).fetch_forecast(cfg.coordinates, units=cfg.weather_units),
             NewsService(news_provider=cfg.provider_news).fetch_news(
                 category=cfg.news_category
             ),

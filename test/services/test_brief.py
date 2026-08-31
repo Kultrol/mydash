@@ -5,7 +5,7 @@ wires preferences into each domain and returns a DailyBrief.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -28,11 +28,10 @@ def _sample_weather() -> MultiDayForecast:
     return MultiDayForecast(
         days=[
             DayForecast(
-                month=7,
-                day=13,
+                date=date(2026, 7, 13),
                 hours=[
                     HourForecast(
-                        hour=12,
+                        time=datetime(2026, 7, 13, 12),
                         temperature=30.0,
                         feels_like_temperature=32.0,
                         cloud_cover=20,
@@ -96,9 +95,7 @@ def config_service(tmp_path: Path) -> UserConfigurationService:
 
 def test_build_returns_daily_brief(config_service, mocker):
     weather_svc = MagicMock()
-    weather_svc.fetch_today_weather_forecast = AsyncMock(
-        return_value=_sample_weather()
-    )
+    weather_svc.fetch_forecast = AsyncMock(return_value=_sample_weather())
     news_svc = MagicMock()
     news_svc.fetch_news = AsyncMock(return_value=_sample_headlines())
     stocks_svc = MagicMock()
@@ -143,9 +140,7 @@ def test_build_uses_config_preferences(tmp_path: Path, mocker):
     )
 
     weather_svc = MagicMock()
-    weather_svc.fetch_today_weather_forecast = AsyncMock(
-        return_value=_sample_weather()
-    )
+    weather_svc.fetch_forecast = AsyncMock(return_value=_sample_weather())
     news_svc = MagicMock()
     news_svc.fetch_news = AsyncMock(return_value=_sample_headlines())
     stocks_svc = MagicMock()
@@ -168,8 +163,8 @@ def test_build_uses_config_preferences(tmp_path: Path, mocker):
     weather_cls.assert_called_once_with(
         weather_provider="open-meteo", geocoding_provider="open-meteo"
     )
-    weather_svc.fetch_today_weather_forecast.assert_awaited_once_with(
-        city="Austin", units="imperial"
+    weather_svc.fetch_forecast.assert_awaited_once_with(
+        svc.get_coordinates(), units="imperial"
     )
     news_cls.assert_called_once_with(news_provider="noozra")
     news_svc.fetch_news.assert_awaited_once_with(category="politics")

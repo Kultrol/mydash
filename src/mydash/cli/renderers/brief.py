@@ -6,8 +6,6 @@ Three full-width panels, printed top to bottom: Markets, Weather, Headlines.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.style import Style
@@ -15,9 +13,6 @@ from rich.table import Table
 from rich.text import Text
 
 from mydash.services.brief import DailyBrief
-
-if TYPE_CHECKING:
-    from mydash.models.weather import HourForecast
 
 HEADLINE_LIMIT = 8
 WEATHER_HOURS = 6
@@ -132,7 +127,7 @@ def _friendly_time(when: datetime) -> str:
 
 def _weather_panel(brief: DailyBrief) -> Panel:
     """Next few hours of forecast for the brief city (unit-aware labels)."""
-    hours = _next_hours(brief, n=WEATHER_HOURS)
+    hours = brief.weather.upcoming_hours(WEATHER_HOURS)
 
     table = Table(
         expand=True,
@@ -153,9 +148,9 @@ def _weather_panel(brief: DailyBrief) -> Panel:
             "No forecast data right now", style="italic bright_white"
         )
     else:
-        for month, day, hour in hours:
+        for hour in hours:
             table.add_row(
-                f"{month:02d}/{day:02d} {hour.hour:02d}:00",
+                hour.time.strftime("%m/%d %H:00"),
                 _weather_emoji(hour.weather_code),
                 _temp_text(hour.temperature, units=units),
                 _temp_text(hour.feels_like_temperature, units=units),
@@ -170,27 +165,6 @@ def _weather_panel(brief: DailyBrief) -> Panel:
         border_style=BORDER_WEATHER,
         title_align="left",
     )
-
-
-def _next_hours(
-    brief: DailyBrief, n: int
-) -> list[tuple[int, int, HourForecast]]:
-    """Return the next *n* hourly slots from now, or the first *n* as fallback."""
-    flat: list[tuple[int, int, HourForecast]] = []
-    for day in brief.weather.days:
-        for hour in day.hours:
-            flat.append((day.month, day.day, hour))
-
-    if not flat:
-        return []
-
-    now = datetime.now()
-    upcoming = [
-        (m, d, h)
-        for m, d, h in flat
-        if (m, d, h.hour) >= (now.month, now.day, now.hour)
-    ]
-    return upcoming[:n] if upcoming else flat[:n]
 
 
 def _temp_text(temp: float, units: str = "metric") -> Text:
