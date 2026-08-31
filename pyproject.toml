@@ -1,6 +1,6 @@
 [project]
 name = "mydash"
-version = "0.5.0"
+version = "0.6.0"
 description = "Terminal daily dashboard: weather, news, and markets in one brief."
 readme = "README.md"
 authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
