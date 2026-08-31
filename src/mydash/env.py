@@ -127,6 +127,10 @@ def has_alpaca_credentials() -> bool:
 def write_template(path: Path | None = None, *, overwrite: bool = False) -> Path:
     """Write a placeholder credentials file and return where it went.
 
+    The file is written ``0600``, which restricts it to your account on Linux
+    and macOS. Windows is not a supported platform and does not honour those
+    bits the same way, so treat the file as world-readable there.
+
     :param path: Destination; defaults to :func:`user_env_path`.
     :param overwrite: Replace an existing file instead of refusing.
     :raises FileExistsError: If the file exists and *overwrite* is false — the
@@ -138,6 +142,6 @@ def write_template(path: Path | None = None, *, overwrite: bool = False) -> Path
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(TEMPLATE, encoding="utf-8")
-    # Credentials file: readable by its owner only.
+    # Credentials file: owner-only on the platforms mydash supports.
     destination.chmod(0o600)
     return destination

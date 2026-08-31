@@ -45,6 +45,7 @@ One SQLite file holds both halves of the persistent state: your preferences, and
 
 ```
 src/mydash/
+  env.py                 # credential discovery and precedence
   cli/
     main.py              # Typer app, welcome panel, error handling
     ui.py                # theme, console, panels, spinner, formatting
@@ -53,7 +54,7 @@ src/mydash/
       brief.py           # brief + weather / news / stocks
       init.py            # setup wizard
       doctor.py          # diagnostics
-      config.py          # show / path / reset
+      config.py          # show / path / env / reset
       cache.py           # info / clear
       set/               # mydash set (one file per domain)
     renderers/
@@ -90,7 +91,8 @@ One database, created on first run.
 |------|--|
 | macOS | `~/Library/Application Support/mydash/mydash.db` |
 | Linux | `~/.local/share/mydash/mydash.db` |
-| Windows | `%LOCALAPPDATA%\mydash\mydash.db` |
+
+Linux and macOS are the supported and CI-tested platforms. platformdirs resolves a Windows path too, but nothing verifies it and the credentials file's `0600` permissions do not restrict access there.
 
 Set `MYDASH_DB_PATH` to point at a different file — useful for trying things out without touching your real preferences. The test suite pins it to a temp file for every test.
 
@@ -105,6 +107,17 @@ Set `MYDASH_DB_PATH` to point at a different file — useful for trying things o
 Migrations are applied on open, tracked with `PRAGMA user_version`. Connections use WAL so a brief can read config while it writes cache rows.
 
 A pre-SQLite `config.json` is imported once on first run and renamed to `config.json.migrated`.
+
+---
+
+## Credentials
+
+Read from the first source that has them, highest precedence first: real
+environment variables, the file named by `MYDASH_ENV_FILE`, a `.env` beside or
+above the working directory, then `.env` in the data directory — the last being
+what makes a global install work from any directory. `mydash.env` owns this;
+`mydash config env` shows what it found. Placeholder values from a freshly
+created template are treated as *not* configured.
 
 ---
 
@@ -175,6 +188,8 @@ Uncaught failures reach a `sys.excepthook` that prints a short panel with a next
 | platformdirs | Cross-platform data directory |
 | python-dotenv | Alpaca secrets from `.env` |
 | pytest + pytest-mock | Tests |
+| ruff | Lint |
+| GitHub Actions | CI and release |
 
 Console script: `mydash` → `mydash.cli.main:app`.
 
@@ -201,9 +216,12 @@ Console script: `mydash` → `mydash.cli.main:app`.
 | `test/models/` | Forecast time logic | — |
 | `test/services/` | Brief orchestration, partial failure, user config | Domain services / filesystem |
 | `test/cli/` | Command surface and panel output | Services |
+| `test/test_env.py` | Credential discovery and precedence | tmp_path env files |
 
 Pytest uses `--import-mode=importlib` so similarly named provider test modules collect cleanly. An autouse fixture pins `MYDASH_DB_PATH` to a temp file, so no test can reach the real database.
 
+CI runs this suite on Linux and macOS across Python 3.12, 3.13, and 3.14, plus a job resolving to the oldest declared dependency versions.
+
 ---
 
-*August 2026*
+*August 2026 · v1.0.0*

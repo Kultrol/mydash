@@ -11,4 +11,4 @@ Each client domain uses a Protocol, factory, and one or more provider
 implementations. Domain schemas live in ``models/``.
 """
 
-__version__ = "0.6.0"
+__version__ = "1.0.0"

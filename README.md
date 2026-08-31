@@ -4,10 +4,11 @@
 > Weather, news, and markets — one command, from any directory.
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](https://github.com/Kultrol/mydash/releases)
+[![CI](https://github.com/Kultrol/mydash/actions/workflows/ci.yml/badge.svg)](https://github.com/Kultrol/mydash/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Kultrol/mydash/releases)
 [![Release](https://img.shields.io/github/v/release/Kultrol/mydash?label=latest%20release)](https://github.com/Kultrol/mydash/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/status-pre--1.0-brightgreen.svg)](https://github.com/Kultrol/mydash/releases)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](https://github.com/Kultrol/mydash/releases)
 
 **mydash** is a command-line daily brief for people who live in the terminal. It pulls live data from public APIs and paints it with Rich, so your morning check-in is one command and a couple of seconds.
 
@@ -59,7 +60,10 @@ mydash  ·  Monday 31 August  ·  Miami  ·  4:42 PM ─────────
 
 ## 📋 Requirements
 
-- 🐍 **Python 3.12+**
+- 🐍 **Python 3.12+** (tested on 3.12, 3.13, and 3.14)
+- 🖥️ **Linux or macOS.** Windows is untested — it may well work, but the
+  credentials file's `0600` permissions do not restrict access there, so it is
+  not a supported platform
 - 🌐 Network access
 - ☁️ Weather & geocoding: [Open-Meteo](https://open-meteo.com/) — **no API key**
 - 🗞️ News: Noozra — **no API key**
@@ -187,7 +191,7 @@ Weather and news need nothing. Markets need free [Alpaca](https://alpaca.markets
 For a global install, put them where mydash can always find them:
 
 ```bash
-mydash config env --create   # writes a fillable file, readable only by you
+mydash config env --create   # writes a fillable file, owner-only (0600)
 mydash config env            # shows every location it checks, and which it used
 ```
 
@@ -310,11 +314,28 @@ uv run pytest
 uv run ruff check src test
 ```
 
-382 tests cover the HTTP layer against a real httpx transport, provider parsing and partial-result handling, SQLite storage and cache expiry, brief orchestration including per-domain failure, and the command surface and panel output.
+393 tests cover the HTTP layer against a real httpx transport, provider parsing and partial-result handling, SQLite storage and cache expiry, brief orchestration including per-domain failure, and the command surface and panel output.
 
 Tests are isolated from your real setup: an autouse fixture pins `MYDASH_DB_PATH` to a temp file, and credential discovery follows it, so a test run can never read or rewrite your own configuration.
 
 Build the artifacts with `uv build`.
+
+CI runs the suite on Linux and macOS across Python 3.12, 3.13, and 3.14, plus a
+job that resolves to the **oldest** dependency versions the project declares — so
+the `>=` floors in `pyproject.toml` are tested, not just asserted.
+
+### Cutting a release
+
+The version lives in `src/mydash/__init__.py` and nowhere else; `pyproject.toml`
+reads it from there. Bump it, land a matching `CHANGELOG.md` section, then:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+The release workflow refuses to publish if the tag and the packaged version
+disagree, then builds and attaches the wheel and sdist to a GitHub Release with
+that version's changelog as the notes.
 
 ---
 

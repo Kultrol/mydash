@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-08-31
+
+First stable release. mydash is a terminal application, it works from any
+directory once installed, and the surface documented here is one I intend to keep
+working.
+
+### Added
+
+- **Continuous integration.** Tests run on Linux and macOS across Python 3.12,
+  3.13, and 3.14 on every push and pull request, alongside ruff and a job that
+  builds the wheel and runs it from a neutral directory
+- **A dependency-floor job.** Dependencies are published as `>=` but were only
+  ever exercised against `uv.lock`; CI now resolves with `--resolution
+  lowest-direct` and runs the full suite against the oldest declared versions
+- **Release automation.** Pushing a `v*` tag builds the artifacts and publishes a
+  GitHub Release with that version's changelog as the notes. It refuses to
+  publish when the tag and the packaged version disagree
+- **Dependabot** for Python dependencies and workflow actions
+- `SECURITY.md`, including what mydash does and does not do with your data:
+  no telemetry, and credentials are never written to the database or into a
+  cache key
+
+### Changed
+
+- **The version is single-sourced** from `src/mydash/__init__.py`, which is what
+  `mydash --version` reports. It used to live there *and* in `pyproject.toml`,
+  maintained by hand, so drift meant the CLI could lie about its own version
+- **Classifiers now match what is verified**: Production/Stable, and Linux +
+  macOS rather than "OS Independent". Windows is untested and the credentials
+  file's `0600` permissions do not restrict access there
+- The sdist no longer ships `docs/assets`; an unreferenced demo GIF was 1.4 MB of
+  a 1.5 MB download, now 92 KB
+
+### Fixed
+
+- **`mydash brief --only <typo>` no longer crashes.** It raised a bare
+  `ValueError` from inside `BriefService`, which surfaced as a generic "Something
+  went wrong" panel advising you to run `mydash config show` — unrelated to the
+  mistake — and exited 1. It is now a usage error naming the valid panels, with
+  exit code 2, raised before any fetch begins
+- **`.python-version` was tracked *and* gitignored**, pinning 3.14 while
+  `requires-python` says `>=3.12`, so a fresh clone went looking for 3.14. It is
+  no longer tracked
+
 ## [0.6.0] — 2026-08-31
 
 mydash is a terminal app and stays one — the web front end the layering was
@@ -89,5 +133,6 @@ This is the first public **MVP** of mydash: a focused terminal demo, not a produ
 - Only the `brief` subcommand is exposed
 - No stability or uptime guarantees; treat as a demo / learning project on the path to 1.0
 
+[1.0.0]: https://github.com/Kultrol/mydash/releases/tag/v1.0.0
 [0.6.0]: https://github.com/Kultrol/mydash/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Kultrol/mydash/releases/tag/v0.5.0
