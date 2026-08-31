@@ -129,7 +129,6 @@ wheels = [
 
 [[package]]
 name = "mydash"
-version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

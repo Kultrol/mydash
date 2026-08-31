@@ -1,6 +1,8 @@
 [project]
 name = "mydash"
-version = "0.6.0"
+# Single-sourced from src/mydash/__init__.py, which is what `mydash --version`
+# reports; see [tool.hatch.version]. Bump it there and nowhere else.
+dynamic = ["version"]
 description = "Terminal daily dashboard: weather, news, and markets in one brief."
 readme = "README.md"
 authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
@@ -9,15 +11,19 @@ license-files = ["LICENSE"]
 keywords = ["cli", "dashboard", "terminal", "weather", "news", "stocks", "tui"]
 
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: End Users/Desktop",
   "Natural Language :: English",
-  "Operating System :: OS Independent",
+  # Tested on Linux and macOS in CI. Windows is unverified: the credentials
+  # file's 0600 permissions do not restrict access there.
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Utilities",
   "Typing :: Typed",
 ]
@@ -52,6 +58,9 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "src/mydash/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/mydash"]
 # py.typed ships so the "Typing :: Typed" classifier is true for consumers.
@@ -68,6 +77,9 @@ include = [
   "/LICENSE",
   "/.env.example",
 ]
+# The demo screenshot and GIF are most of the sdist by size and nothing
+# references them; they belong in the repo, not in every download.
+exclude = ["/docs/assets"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
