@@ -215,22 +215,20 @@ Tests cover clients (providers + factories), services (brief + user config), and
 
 ## 🔭 Looking ahead
 
-**Today** is a working MVP: daily `brief`, user `set` preferences, three panels, and a clean three-layer layout you can install and run.
-
-**Version 1.0** means a production-ready *terminal* app you can rely on day to day — still not a website. Web and other interfaces can reuse the same service layer later.
+**mydash is a terminal app.** There is no web UI, no API server, and none is planned — every improvement goes into making the CLI faster, clearer, and nicer to live in.
 
 ### Path to 1.0
 
-- ⌨️ **CLI polish** — flags to override prefs for a single run; optional focused commands (weather / news / stocks) through the service layer  
-- 🔌 **Solid data layer** — fix remaining edge cases in clients, consistent request timeouts, cleaner shared HTTP plumbing  
+- ⌨️ **CLI polish** — focused commands (weather / news / stocks), per-run overrides, and a consistent visual language across every panel  
+- 🔌 **Solid data layer** — resilient clients, consistent timeouts and retries, cached responses for instant repeat views  
 - 🧪 **Tests & automation** — shared fixtures, CI on every push, enough coverage that refactors stay safe  
 - 📚 **Docs for a stable release** — keep [CHANGELOG](CHANGELOG.md) current and a command surface that feels intentional for daily use  
 
 ### After 1.0
 
-- 🌐 A website or small API on top of the same services (no second copy of the business logic)  
-- ⚡ Optional caching for faster repeat views  
-- 📅 More dashboard domains over time (calendar, tasks, AI-assisted briefs, and similar)
+- 📅 More dashboard domains over time (calendar, tasks, AI-assisted briefs, and similar)  
+- 🎨 Themes and per-panel layout preferences  
+- 📦 Distribution polish (Homebrew, pipx-first install docs)
 
 Layer boundaries today are documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

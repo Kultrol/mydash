@@ -6,7 +6,7 @@ Public reference for the current system shape. Product overview and install: [RE
 
 ## Strategy
 
-Three layers, one direction of dependency: presentation → orchestration → data. The terminal **brief** and **set** commands sit on this stack so later interfaces (more commands, web) can attach without rewriting business logic.
+Three layers, one direction of dependency: presentation → orchestration → data. mydash is a terminal application only — the layering exists so new *commands* and *providers* can be added without rewriting business logic, not to leave room for a web front end.
 
 ```mermaid
 flowchart LR
@@ -69,7 +69,7 @@ src/mydash/
     stocks/              # Alpaca
 ```
 
-**Still deferred:** caching, FastAPI/web, single-run CLI overrides for prefs.
+**Still deferred:** caching, single-run CLI overrides for prefs.
 
 ---
 
