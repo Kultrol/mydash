@@ -70,7 +70,7 @@ def category(
     def message() -> str:
         return (
             f"News category set to "
-            f"[bold bright_white]{svc.get_news_category()}[/bold bright_white]"
+            f"[heading]{svc.get_news_category()}[/heading]"
         )
 
     run(action, success_message=message, success_title="📰  News · category")
@@ -108,8 +108,8 @@ def provider(
     def message() -> str:
         return (
             f"News provider set to "
-            f"[bold bright_white]{svc.get_news_provider()}[/bold bright_white]\n"
-            f"Available: [bright_cyan]{fmt_choices(KNOWN_NEWS_PROVIDERS)}[/bright_cyan]"
+            f"[heading]{svc.get_news_provider()}[/heading]\n"
+            f"Available: [accent]{fmt_choices(KNOWN_NEWS_PROVIDERS)}[/accent]"
         )
 
     run(action, success_message=message, success_title="📰  News · provider")

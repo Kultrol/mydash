@@ -40,7 +40,7 @@ def test_set_list_options_short_and_long():
 def test_set_weather_units(tmp_path: Path, mocker):
     path = tmp_path / "mydash.db"
     mocker.patch(
-        "mydash.cli.commands.set._helpers.UserConfigurationService",
+        "mydash.cli.context.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
@@ -56,7 +56,7 @@ def test_set_weather_units(tmp_path: Path, mocker):
 def test_set_stocks_add_and_news_category(tmp_path: Path, mocker):
     path = tmp_path / "mydash.db"
     mocker.patch(
-        "mydash.cli.commands.set._helpers.UserConfigurationService",
+        "mydash.cli.context.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
@@ -87,7 +87,7 @@ def test_set_weather_city(tmp_path: Path, mocker):
         "mydash.services.user_config.get_geocoding_client", return_value=geo
     )
     mocker.patch(
-        "mydash.cli.commands.set._helpers.UserConfigurationService",
+        "mydash.cli.context.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
@@ -104,21 +104,21 @@ def test_set_show(tmp_path: Path, mocker):
     path = tmp_path / "mydash.db"
     UserConfigurationService(db_path=path)
     mocker.patch(
-        "mydash.cli.commands.set._helpers.UserConfigurationService",
+        "mydash.cli.context.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
     result = runner.invoke(app, ["set", "show"])
     assert result.exit_code == 0, result.output
     assert "Miami" in result.output
-    assert "weather_units" in result.output
+    assert "Weather units" in result.output
     assert "Config" in result.output
 
 
 def test_set_invalid_units_exits_nonzero(tmp_path: Path, mocker):
     path = tmp_path / "mydash.db"
     mocker.patch(
-        "mydash.cli.commands.set._helpers.UserConfigurationService",
+        "mydash.cli.context.UserConfigurationService",
         side_effect=lambda: UserConfigurationService(db_path=path),
     )
 

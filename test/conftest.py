@@ -10,6 +10,22 @@ from typing import Any
 
 import pytest
 
+from mydash.storage.database import DB_PATH_ENV_VAR
+
+
+@pytest.fixture(autouse=True)
+def isolated_database(monkeypatch: pytest.MonkeyPatch, tmp_path_factory) -> None:
+    """Point every test at a throwaway database.
+
+    A test that builds ``UserConfigurationService()`` with no path would
+    otherwise open the real user-data database — and on first run import and
+    *rename* a developer's own config.json. This makes that impossible, and
+    :func:`legacy_config_path` follows the override, so the legacy sweep stays
+    inside the temp directory too.
+    """
+    directory = tmp_path_factory.mktemp("mydash-isolated")
+    monkeypatch.setenv(DB_PATH_ENV_VAR, str(directory / "mydash.db"))
+
 
 class FakeHttpClient:
     """Stand-in for ``HttpApiClient`` that replays canned responses.

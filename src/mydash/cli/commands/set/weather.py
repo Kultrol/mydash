@@ -10,6 +10,7 @@ import asyncio
 
 import typer
 
+from mydash.cli import ui
 from mydash.cli.commands.set._helpers import (
     config_service,
     fmt_choices,
@@ -17,6 +18,7 @@ from mydash.cli.commands.set._helpers import (
     require_arg,
     run,
 )
+from mydash.models.geocoding import Place
 from mydash.services.user_config import KNOWN_WEATHER_PROVIDERS, KNOWN_WEATHER_UNITS
 
 app = typer.Typer(
@@ -71,16 +73,19 @@ def city(
         tip="mydash set weather city --help",
     )
     svc = config_service()
+    matched: dict[str, Place] = {}
 
     def action() -> None:
-        asyncio.run(svc.set_city(city))
+        with ui.spinner(f"Looking up {city}…"):
+            matched["place"] = asyncio.run(svc.set_city(city))
 
     def message() -> str:
-        coords = svc.get_coordinates()
+        place = matched["place"]
+        coords = place.coordinates
         return (
-            f"City set to [bold bright_white]{svc.get_city()}[/bold bright_white]\n"
-            f"Coordinates: [bright_cyan]{coords.latitude}[/bright_cyan], "
-            f"[bright_cyan]{coords.longitude}[/bright_cyan]"
+            f"City set to [heading]{place.label}[/heading]\n"
+            f"Coordinates: [accent]{coords.latitude}[/accent], "
+            f"[accent]{coords.longitude}[/accent]"
         )
 
     run(action, success_message=message, success_title="🌤️  Weather · city")
@@ -119,8 +124,8 @@ def units(
     def message() -> str:
         return (
             f"Weather units set to "
-            f"[bold bright_white]{svc.get_weather_forecast_units()}[/bold bright_white]\n"
-            f"Available: [bright_cyan]{fmt_choices(KNOWN_WEATHER_UNITS)}[/bright_cyan]"
+            f"[heading]{svc.get_weather_forecast_units()}[/heading]\n"
+            f"Available: [accent]{fmt_choices(KNOWN_WEATHER_UNITS)}[/accent]"
         )
 
     run(action, success_message=message, success_title="🌤️  Weather · units")
@@ -158,8 +163,8 @@ def provider(
     def message() -> str:
         return (
             f"Weather provider set to "
-            f"[bold bright_white]{svc.get_weather_provider()}[/bold bright_white]\n"
-            f"Available: [bright_cyan]{fmt_choices(KNOWN_WEATHER_PROVIDERS)}[/bright_cyan]"
+            f"[heading]{svc.get_weather_provider()}[/heading]\n"
+            f"Available: [accent]{fmt_choices(KNOWN_WEATHER_PROVIDERS)}[/accent]"
         )
 
     run(action, success_message=message, success_title="🌤️  Weather · provider")

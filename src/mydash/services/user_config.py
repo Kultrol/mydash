@@ -15,6 +15,7 @@ baked in, so nothing needs the network until you change the city.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -27,7 +28,7 @@ from pydantic import BaseModel, Field, ValidationError
 from mydash.client.geocoding.base import DEFAULT_RESULT_LIMIT
 from mydash.client.geocoding.factory import get_geocoding_client
 from mydash.models.geocoding import Coordinates, Place
-from mydash.storage.database import APP_NAME, Database
+from mydash.storage.database import APP_NAME, DB_PATH_ENV_VAR, Database
 
 WeatherUnits = Literal["metric", "imperial"]
 
@@ -94,7 +95,16 @@ _SETTING_FIELDS: Final[tuple[str, ...]] = (
 
 
 def legacy_config_path() -> Path:
-    """Return the pre-SQLite JSON config path (imported once on first run)."""
+    """Return the pre-SQLite JSON config path (imported once on first run).
+
+    When ``MYDASH_DB_PATH`` points somewhere custom, look beside *that*
+    database instead of in the real config directory. An isolated database
+    means an isolated environment, and nothing running against a throwaway
+    database should ever consume — and rename — a real config.json.
+    """
+    override = os.getenv(DB_PATH_ENV_VAR)
+    if override and override.strip():
+        return Path(override.strip()).expanduser().parent / LEGACY_CONFIG_FILENAME
     return user_config_path(APP_NAME, appauthor=False) / LEGACY_CONFIG_FILENAME
 
 

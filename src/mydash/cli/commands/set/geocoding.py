@@ -70,8 +70,8 @@ def provider(
     def message() -> str:
         return (
             f"Geocoding provider set to "
-            f"[bold bright_white]{svc.get_geocoding_provider()}[/bold bright_white]\n"
-            f"Available: [bright_cyan]{fmt_choices(KNOWN_GEOCODING_PROVIDERS)}[/bright_cyan]"
+            f"[heading]{svc.get_geocoding_provider()}[/heading]\n"
+            f"Available: [accent]{fmt_choices(KNOWN_GEOCODING_PROVIDERS)}[/accent]"
         )
 
     run(action, success_message=message, success_title="📍  Geocoding · provider")
