@@ -1,183 +1,195 @@
 """Alpaca Markets stock data client implementation.
 
-Fetches latest bar/quote data from https://data.alpaca.markets.
-Requires API credentials set in environment variables (see stocks/factory.py).
+Fetches the latest quotes and daily bars from https://data.alpaca.markets.
+Requires API credentials in the environment:
+
+    STOCK_ALPACA_API_KEY_ID
+    STOCK_ALPACA_API_SECRET_KEY
+
+A symbol Alpaca returns nothing for — a typo, a delisting, a ticker outside
+your data plan — lands in the result's ``missing`` list. One bad symbol should
+cost you that row, not the whole markets panel.
 """
 
+from __future__ import annotations
+
 import os
-from typing import Any, Dict
+from typing import Any
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from mydash.client.http_api.http_api import HttpApiClient
 from mydash.client.stocks.base import StockClient
 from mydash.client.stocks.providers.alpaca.errors import (
-    HeaderValidationError,
-    MissingStockBarsError,
-    MissingStockQuotesError,
+    MissingCredentialsError,
     ParameterSettingError,
     ResponseError,
-    StockBarsSettingError,
-    StockQuotesSettingError,
 )
 from mydash.models.stocks import StockBar, StockBars, StockQuote, StockQuotes
+from mydash.storage.cache import TTL
+
+QUOTES_URL = httpx.URL("https://data.alpaca.markets/v2/stocks/quotes/latest")
+BARS_URL = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
+
+API_KEY_ENV_VAR = "STOCK_ALPACA_API_KEY_ID"
+API_SECRET_ENV_VAR = "STOCK_ALPACA_API_SECRET_KEY"
 
 
 class AlpacaParams(BaseModel):
-    """Query parameters for the Alpaca latest-bars endpoint."""
+    """Query parameters for the Alpaca latest-quotes and latest-bars endpoints."""
 
-    symbols: list[str]
+    symbols: list[str] = Field(min_length=1)
 
     def to_query_params(self) -> dict[str, str]:
         """Serialize symbols as a comma-separated string for the Alpaca API."""
         return {"symbols": ",".join(self.symbols)}
 
 
-class AlpacaHeaders(BaseModel):
-    """Authentication headers for Alpaca API requests."""
-
-    api_key: str
-    api_secret: str
-    content_type: str
-
-
 class AlpacaClient(StockClient):
-    """Fetch and cache latest stock quotes from Alpaca Markets."""
+    """Fetch latest quotes and bars from Alpaca Markets."""
 
-    def __init__(self):
-        self.quotes_url = httpx.URL(
-            "https://data.alpaca.markets/v2/stocks/quotes/latest"
+    def __init__(self, http_client: HttpApiClient | None = None) -> None:
+        """Build the client.
+
+        :param http_client: Shared HTTP client; one is created per instance
+            when omitted, so quotes and bars reuse a connection.
+        """
+        self.quotes_url = QUOTES_URL
+        self.bars_url = BARS_URL
+        self.http_client = http_client if http_client is not None else HttpApiClient()
+
+    # -- credentials ----------------------------------------------------
+
+    @staticmethod
+    def credentials() -> tuple[str, str]:
+        """Return the Alpaca key and secret from the environment.
+
+        :raises MissingCredentialsError: If either is unset or blank.
+        """
+        api_key = os.getenv(API_KEY_ENV_VAR) or ""
+        api_secret = os.getenv(API_SECRET_ENV_VAR) or ""
+        missing = [
+            name
+            for name, value in (
+                (API_KEY_ENV_VAR, api_key),
+                (API_SECRET_ENV_VAR, api_secret),
+            )
+            if not value.strip()
+        ]
+        if missing:
+            raise MissingCredentialsError(missing)
+        return api_key, api_secret
+
+    def _headers(self) -> httpx.Headers:
+        """Build the authenticated request headers."""
+        api_key, api_secret = self.credentials()
+        return httpx.Headers(
+            {
+                "APCA-API-KEY-ID": api_key,
+                "APCA-API-SECRET-KEY": api_secret,
+                "ACCEPT": "application/json",
+            }
         )
-        self.bars_url = httpx.URL("https://data.alpaca.markets/v2/stocks/bars/latest")
-        self.stock_quotes: StockQuotes | None = None
-        self.stock_bars: StockBars | None = None
 
-    def _header_validation(
-        self,
-        content_type: str = "application/json",
-    ) -> AlpacaHeaders:
-        api_key = os.getenv("STOCK_ALPACA_API_KEY_ID")
-        api_secret = os.getenv("STOCK_ALPACA_API_SECRET_KEY")
-        if api_key is not None and api_secret is not None:
-            return AlpacaHeaders(
-                api_key=api_key,
-                api_secret=api_secret,
-                content_type=content_type,
-            )
-        else:
-            raise HeaderValidationError(
-                api_key_type=type(api_key),
-                api_secret_type=type(api_secret),
-                type_of_content_type=type(content_type),
-            )
+    @staticmethod
+    def _validate(symbols: list[str]) -> AlpacaParams:
+        """Validate the requested symbols.
 
-    def _parameter_validation(self, symbols: list[str]) -> AlpacaParams:
+        :raises ParameterSettingError: If *symbols* is empty or not a list of
+            strings.
+        """
         try:
             return AlpacaParams(symbols=symbols)
         except ValidationError as err:
-            raise ParameterSettingError(validation_err=err)
+            raise ParameterSettingError(validation_err=err) from err
 
-    async def set_current_stock_quotes(self, symbols: list[str]) -> None:
-        params = self._parameter_validation(symbols=symbols)
-        headers = self._header_validation()
-        response = await HttpApiClient().make_request(
-            url=self.quotes_url,
-            request_method="GET",
-            parameters=params.to_query_params(),
-            headers=httpx.Headers(
-                {
-                    "APCA-API-KEY-ID": headers.api_key,
-                    "APCA-API-SECRET-KEY": headers.api_secret,
-                    "ACCEPT": headers.content_type,
-                }
-            ),
-        )
+    # -- requests -------------------------------------------------------
 
-        if not response.get("quotes", None):
-            raise ResponseError(query=params, api_response=response)
-        else:
-            quotes: Dict[str, Any] = response["quotes"]
+    async def fetch_quotes(self, symbols: list[str]) -> StockQuotes:
+        """Return the latest bid/ask per symbol, plus any symbols with no data."""
+        params = self._validate(symbols)
+        response = await self._get(self.quotes_url, params)
+        entries = _series(response, "quotes", params)
 
-        self.stock_quotes = StockQuotes(quotes=[])
+        quotes: list[StockQuote] = []
+        missing: list[str] = []
         for ticker in params.symbols:
-            if not quotes.get(ticker, None):
-                raise ResponseError(query=params, api_response=response)
+            quote = _parse_quote(ticker, entries.get(ticker))
+            if quote is None:
+                missing.append(ticker)
             else:
-                ticker_quote: Dict[str, Any] = quotes[ticker]
+                quotes.append(quote)
+        return StockQuotes(quotes=quotes, missing=missing)
 
-            try:
-                ticker_ask_price = ticker_quote["ap"]
-                ticker_bid_price = ticker_quote["bp"]
-                ticker_time = ticker_quote["t"]
-            except KeyError as err:
-                raise ResponseError(query=params, api_response=response, error=err)
+    async def fetch_bars(self, symbols: list[str]) -> StockBars:
+        """Return the latest daily bar per symbol, plus any symbols with no data."""
+        params = self._validate(symbols)
+        response = await self._get(self.bars_url, params)
+        entries = _series(response, "bars", params)
 
-            try:
-                stock_quote = StockQuote(
-                    ticker_name=ticker,
-                    ask_price=ticker_ask_price,
-                    bid_price=ticker_bid_price,
-                    time=ticker_time,
-                )
-            except ValidationError as err:
-                raise StockQuotesSettingError(err)
+        bars: list[StockBar] = []
+        missing: list[str] = []
+        for ticker in params.symbols:
+            bar = _parse_bar(ticker, entries.get(ticker))
+            if bar is None:
+                missing.append(ticker)
+            else:
+                bars.append(bar)
+        return StockBars(bars=bars, missing=missing)
 
-            self.stock_quotes.quotes.append(stock_quote)
-        return None
-
-    def get_current_stock_quotes(self) -> StockQuotes:
-        if self.stock_quotes is not None:
-            return self.stock_quotes
-        else:
-            raise MissingStockQuotesError()
-
-    async def set_current_stock_bars(self, symbols: list[str]) -> None:
-        params = self._parameter_validation(symbols=symbols)
-        headers = self._header_validation()
-        response: Dict[str, Any] = await HttpApiClient().make_request(
-            url=self.bars_url,
+    async def _get(self, url: httpx.URL, params: AlpacaParams) -> dict[str, Any]:
+        """Send an authenticated GET for *params* against *url*."""
+        return await self.http_client.make_request(
+            url=url,
             request_method="GET",
             parameters=params.to_query_params(),
-            headers=httpx.Headers(
-                {
-                    "APCA-API-KEY-ID": headers.api_key,
-                    "APCA-API-SECRET-KEY": headers.api_secret,
-                    "ACCEPT": headers.content_type,
-                }
-            ),
+            headers=self._headers(),
+            cache_ttl=TTL["stocks"],
         )
 
-        if not response.get("bars", None):
-            raise ResponseError(query=params, api_response=response)
-        else:
-            bars: Dict[str, Any] = response["bars"]
 
-        self.stock_bars = StockBars(bars=[])
-        for ticker in params.symbols:
-            try:
-                bar: Dict[str, Any] = bars[ticker]
-            except KeyError as err:
-                raise ResponseError(query=params, api_response=response, error=err)
+def _series(response: Any, key: str, params: AlpacaParams) -> dict[str, Any]:
+    """Return the ``quotes``/``bars`` mapping from a response.
 
-            try:
-                open = bar["o"]
-                close = bar["c"]
-                time = bar["t"]
-            except KeyError as err:
-                raise ResponseError(query=params, api_response=response, error=err)
+    An empty mapping is fine — that just means every symbol is missing — but a
+    response without the key at all is a shape we do not understand.
+    """
+    if not isinstance(response, dict) or key not in response:
+        raise ResponseError(query=params, api_response=response)
+    entries = response[key]
+    if entries is None:
+        return {}
+    if not isinstance(entries, dict):
+        raise ResponseError(query=params, api_response=response)
+    return entries
 
-            try:
-                stock_bar: StockBar = StockBar(
-                    ticker_name=ticker, open=open, close=close, time=time
-                )
-            except ValidationError as err:
-                raise StockBarsSettingError(err)
-            self.stock_bars.bars.append(stock_bar)
+
+def _parse_quote(ticker: str, entry: Any) -> StockQuote | None:
+    """Build a :class:`StockQuote`, or ``None`` when the entry is unusable."""
+    if not isinstance(entry, dict):
+        return None
+    try:
+        return StockQuote(
+            ticker_name=ticker,
+            ask_price=entry["ap"],
+            bid_price=entry["bp"],
+            time=entry["t"],
+        )
+    except (KeyError, TypeError, ValidationError):
         return None
 
-    def get_current_stock_bars(self):
-        if self.stock_bars is not None:
-            return self.stock_bars
-        else:
-            raise MissingStockBarsError()
+
+def _parse_bar(ticker: str, entry: Any) -> StockBar | None:
+    """Build a :class:`StockBar`, or ``None`` when the entry is unusable."""
+    if not isinstance(entry, dict):
+        return None
+    try:
+        return StockBar(
+            ticker_name=ticker,
+            open=entry["o"],
+            close=entry["c"],
+            time=entry["t"],
+        )
+    except (KeyError, TypeError, ValidationError):
+        return None
