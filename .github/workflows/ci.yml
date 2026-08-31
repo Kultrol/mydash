@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to a PR makes the previous run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test · ${{ matrix.os }} · py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One failing leg should not hide the result of the others.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # --python governs rather than a checked-in .python-version, so the
+      # matrix leg is what actually decides the interpreter.
+      - name: Install dependencies
+        run: uv sync --group dev --python ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: uv run pytest -q
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - run: uv sync --group dev
+
+      - name: Ruff
+        run: uv run ruff check src test
+
+  lowest-direct:
+    # Dependencies are declared as >=, but the lockfile only ever exercises
+    # today's versions. This proves the floors we publish actually work.
+    name: oldest supported dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Resolve to the lowest declared versions
+        run: uv sync --group dev --python 3.12 --resolution lowest-direct
+
+      - name: Show what was resolved
+        run: uv pip list
+
+      - name: Run tests
+        run: uv run pytest -q
+
+  build:
+    # Catch a packaging break on the PR, not at release time.
+    name: build artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build wheel and sdist
+        run: uv build
+
+      - name: Install the wheel and run it from a neutral directory
+        run: |
+          uv tool install --force ./dist/*.whl
+          cd "$(mktemp -d)"
+          MYDASH_DB_PATH="$PWD/mydash.db" mydash --version
+          MYDASH_DB_PATH="$PWD/mydash.db" mydash doctor --offline
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
