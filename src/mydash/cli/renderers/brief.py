@@ -38,11 +38,28 @@ RAIN_WET = 60
 RAIN_DRIZZLE = 30
 
 
+#: Panel builder per brief domain.
+_PANELS = {
+    "stocks": lambda brief: _stocks_panel(brief),
+    "weather": lambda brief: _weather_panel(brief),
+    "news": lambda brief: _headlines_panel(brief),
+}
+
+
 def render_brief(console: Console, brief: DailyBrief) -> None:
-    """Print Markets, Weather, and Headlines as stacked panels."""
-    console.print(_stocks_panel(brief))
-    console.print(_weather_panel(brief))
-    console.print(_headlines_panel(brief))
+    """Print the requested panels, stacked, in brief order."""
+    for domain in brief.domains:
+        builder = _PANELS.get(domain)
+        if builder is not None:
+            console.print(builder(brief))
+
+
+def _unavailable(reason: str) -> Text:
+    """Body for a panel whose provider failed, explaining why."""
+    body = Text()
+    body.append("Unavailable — ", style="bold bright_red")
+    body.append(reason, style="bright_white")
+    return body
 
 
 def _stocks_panel(brief: DailyBrief) -> Panel:
@@ -60,6 +77,15 @@ def _stocks_panel(brief: DailyBrief) -> Panel:
     table.add_column("Close", justify="right", no_wrap=True)
     table.add_column("Change", justify="right", no_wrap=True)
     table.add_column("As of", justify="right", style=STYLE_META, no_wrap=True)
+
+    failure = brief.failed("stocks")
+    if failure is not None:
+        return Panel(
+            _unavailable(failure),
+            title="📈 Markets",
+            border_style=BORDER_STOCKS,
+            title_align="left",
+        )
 
     bars_by_ticker = {bar.ticker_name: bar for bar in brief.stock_bars.bars}
 
@@ -127,6 +153,15 @@ def _friendly_time(when: datetime) -> str:
 
 def _weather_panel(brief: DailyBrief) -> Panel:
     """Next few hours of forecast for the brief city (unit-aware labels)."""
+    failure = brief.failed("weather")
+    if failure is not None:
+        return Panel(
+            _unavailable(failure),
+            title=f"🌤️  Weather · {brief.city}",
+            border_style=BORDER_WEATHER,
+            title_align="left",
+        )
+
     hours = brief.weather.upcoming_hours(WEATHER_HOURS)
 
     table = Table(
@@ -216,6 +251,15 @@ def _weather_emoji(weather_code: int) -> str:
 
 def _headlines_panel(brief: DailyBrief) -> Panel:
     """Headlines panel; source labels link to the article URL when possible."""
+    failure = brief.failed("news")
+    if failure is not None:
+        return Panel(
+            _unavailable(failure),
+            title=f"📰 Headlines · {brief.news_category}",
+            border_style=BORDER_HEADLINES,
+            title_align="left",
+        )
+
     table = Table(
         expand=True,
         show_lines=False,

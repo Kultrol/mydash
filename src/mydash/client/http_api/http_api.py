@@ -66,6 +66,7 @@ class HttpApiClient:
         retries: int = DEFAULT_RETRIES,
         backoff: float = DEFAULT_BACKOFF,
         cache: ResponseCache | None = None,
+        refresh: bool = False,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         """Configure request behaviour.
@@ -74,12 +75,15 @@ class HttpApiClient:
         :param retries: Extra attempts after the first (0 disables retrying).
         :param backoff: First backoff step in seconds; set 0 to retry at once.
         :param cache: Response cache; without one, ``cache_ttl`` is ignored.
+        :param refresh: Skip cached reads but still refill the cache, so
+            ``--refresh`` gets live data without throwing away the benefit.
         :param transport: Custom httpx transport, e.g. ``httpx.MockTransport``.
         """
         self.timeout = timeout
         self.retries = max(0, retries)
         self.backoff = max(0.0, backoff)
         self.cache = cache
+        self.refresh = refresh
         self.transport = transport
         self._shared: httpx.AsyncClient | None = None
 
@@ -151,7 +155,7 @@ class HttpApiClient:
         """
         method = request_method.upper()
         cache_key = self._cache_key(method, url, parameters, cache_ttl)
-        if cache_key is not None:
+        if cache_key is not None and not self.refresh:
             assert self.cache is not None  # narrowed by _cache_key
             cached = self.cache.get(cache_key)
             if cached is not None:
