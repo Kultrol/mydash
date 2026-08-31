@@ -38,10 +38,10 @@ def test_set_list_options_short_and_long():
 
 
 def test_set_weather_units(tmp_path: Path, mocker):
-    path = tmp_path / "config.json"
+    path = tmp_path / "mydash.db"
     mocker.patch(
         "mydash.cli.commands.set._helpers.UserConfigurationService",
-        side_effect=lambda: UserConfigurationService(config_path=path),
+        side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
     result = runner.invoke(app, ["set", "weather", "units", "imperial"])
@@ -49,15 +49,15 @@ def test_set_weather_units(tmp_path: Path, mocker):
     assert "imperial" in result.output
     assert "Weather" in result.output
 
-    svc = UserConfigurationService(config_path=path)
+    svc = UserConfigurationService(db_path=path)
     assert svc.get_weather_forecast_units() == "imperial"
 
 
 def test_set_stocks_add_and_news_category(tmp_path: Path, mocker):
-    path = tmp_path / "config.json"
+    path = tmp_path / "mydash.db"
     mocker.patch(
         "mydash.cli.commands.set._helpers.UserConfigurationService",
-        side_effect=lambda: UserConfigurationService(config_path=path),
+        side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
     r1 = runner.invoke(app, ["set", "stocks", "add", "goog"])
@@ -68,13 +68,13 @@ def test_set_stocks_add_and_news_category(tmp_path: Path, mocker):
     assert r2.exit_code == 0, r2.output
     assert "politics" in r2.output
 
-    svc = UserConfigurationService(config_path=path)
+    svc = UserConfigurationService(db_path=path)
     assert "GOOG" in svc.get_stock_symbols()
     assert svc.get_news_category() == "politics"
 
 
 def test_set_weather_city(tmp_path: Path, mocker):
-    path = tmp_path / "config.json"
+    path = tmp_path / "mydash.db"
     coords = Coordinates(latitude=30.27, longitude=-97.74)
     geo = MagicMock()
     geo.set_coordinates = AsyncMock()
@@ -84,24 +84,24 @@ def test_set_weather_city(tmp_path: Path, mocker):
     )
     mocker.patch(
         "mydash.cli.commands.set._helpers.UserConfigurationService",
-        side_effect=lambda: UserConfigurationService(config_path=path),
+        side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
     result = runner.invoke(app, ["set", "weather", "city", "Austin"])
     assert result.exit_code == 0, result.output
     assert "Austin" in result.output
 
-    svc = UserConfigurationService(config_path=path)
+    svc = UserConfigurationService(db_path=path)
     assert svc.get_city() == "Austin"
     assert svc.get_coordinates() == coords
 
 
 def test_set_show(tmp_path: Path, mocker):
-    path = tmp_path / "config.json"
-    UserConfigurationService(config_path=path)
+    path = tmp_path / "mydash.db"
+    UserConfigurationService(db_path=path)
     mocker.patch(
         "mydash.cli.commands.set._helpers.UserConfigurationService",
-        side_effect=lambda: UserConfigurationService(config_path=path),
+        side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
     result = runner.invoke(app, ["set", "show"])
@@ -112,10 +112,10 @@ def test_set_show(tmp_path: Path, mocker):
 
 
 def test_set_invalid_units_exits_nonzero(tmp_path: Path, mocker):
-    path = tmp_path / "config.json"
+    path = tmp_path / "mydash.db"
     mocker.patch(
         "mydash.cli.commands.set._helpers.UserConfigurationService",
-        side_effect=lambda: UserConfigurationService(config_path=path),
+        side_effect=lambda: UserConfigurationService(db_path=path),
     )
 
     result = runner.invoke(app, ["set", "weather", "units", "kelvin"])

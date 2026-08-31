@@ -91,7 +91,7 @@ def _sample_bars() -> StockBars:
 
 @pytest.fixture
 def config_service(tmp_path: Path) -> UserConfigurationService:
-    return UserConfigurationService(config_path=tmp_path / "config.json")
+    return UserConfigurationService(db_path=tmp_path / "mydash.db")
 
 
 def test_build_returns_daily_brief(config_service, mocker):
@@ -128,8 +128,7 @@ def test_build_returns_daily_brief(config_service, mocker):
 
 
 def test_build_uses_config_preferences(tmp_path: Path, mocker):
-    path = tmp_path / "config.json"
-    svc = UserConfigurationService(config_path=path)
+    svc = UserConfigurationService(db_path=tmp_path / "mydash.db")
     svc.set_configuration(
         UserConfig(
             city="Austin",

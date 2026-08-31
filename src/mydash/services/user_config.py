@@ -1,30 +1,36 @@
-"""User preferences: JSON-backed configuration for brief and domain services.
+"""User preferences, stored in SQLite.
 
-:class:`UserConfigurationService` owns the on-disk config file (path from
-platformdirs) and an in-memory :class:`UserConfig`. The daily brief reads
-preferences from this service; the ``mydash set`` CLI mutates them.
+:class:`UserConfigurationService` owns the ``settings`` and ``watchlist`` tables
+and keeps an in-memory :class:`UserConfig` in sync with them. The daily brief
+reads preferences from this service; the ``mydash set`` CLI mutates them.
 
-First use creates the file with Miami / tech / common ticker defaults so no
-network is required until the user changes the city (which geocodes).
+Scalar preferences live one-per-row in ``settings`` so changing your city is a
+single upsert rather than a rewrite of the whole file. Ticker symbols live in
+``watchlist``, ordered, so the brief shows them in the order you added them.
+
+First use seeds Miami / tech / common ticker defaults — the coordinates are
+baked in, so nothing needs the network until you change the city.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import tempfile
+import re
+import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Any, Final, Literal
 
 from platformdirs import user_config_path
 from pydantic import BaseModel, Field, ValidationError
 
 from mydash.client.geocoding.factory import get_geocoding_client
 from mydash.models.geocoding import Coordinates
+from mydash.storage.database import APP_NAME, Database
 
 WeatherUnits = Literal["metric", "imperial"]
 
-# Defaults for a new config file — coordinates are fixed so first create is offline.
+# Defaults for a new database — coordinates are fixed so first create is offline.
 DEFAULT_CITY = "Miami"
 DEFAULT_COORDINATES = Coordinates(latitude=25.7617, longitude=-80.1918)
 DEFAULT_NEWS_CATEGORY = "tech"
@@ -42,6 +48,15 @@ KNOWN_STOCK_PROVIDERS = frozenset({"alpaca"})
 KNOWN_GEOCODING_PROVIDERS = frozenset({"open-meteo"})
 KNOWN_NEWS_PROVIDERS = frozenset({"noozra"})
 KNOWN_WEATHER_UNITS = frozenset({"metric", "imperial"})
+
+# Tickers are letters, digits, dots and dashes — enough for BRK.B and RDS-A.
+SYMBOL_PATTERN: Final = re.compile(r"^[A-Z][A-Z0-9.\-]{0,9}$")
+
+# Config file used before SQLite; imported once, then renamed out of the way.
+LEGACY_CONFIG_FILENAME = "config.json"
+LEGACY_MIGRATED_SUFFIX = ".migrated"
+
+_UNSET: Final = object()
 
 
 class UserConfig(BaseModel):
@@ -64,80 +79,206 @@ class UserConfig(BaseModel):
     provider_news: str = DEFAULT_PROVIDER_NEWS
 
 
-def default_config_path() -> Path:
-    """Return the platform-appropriate config file path for mydash.
-    Application Support on macOS, XDG config on Linux, AppData on Windows.
+#: Scalar fields persisted as individual ``settings`` rows.
+_SETTING_FIELDS: Final[tuple[str, ...]] = (
+    "city",
+    "coordinates",
+    "news_category",
+    "weather_units",
+    "provider_weather",
+    "provider_stocks",
+    "provider_geocoding",
+    "provider_news",
+)
 
-    Typical File Paths on different Platforms:
-        MacOS: ~/Library/Application Support/mydash/config.json
-        Linux: ~/.config/mydash/config.json
-        Windows: C:\\Users\\<user>\\AppData\\mydash\\config.json
+
+def legacy_config_path() -> Path:
+    """Return the pre-SQLite JSON config path (imported once on first run)."""
+    return user_config_path(APP_NAME, appauthor=False) / LEGACY_CONFIG_FILENAME
+
+
+def normalize_symbol(symbol: str) -> str:
+    """Return *symbol* uppercased and stripped, after validating its shape.
+
+    :param symbol: Raw ticker from the user (e.g. ``" aapl "``).
+    :raises ValueError: If empty or not a plausible ticker.
     """
-    return user_config_path("mydash", appauthor=False) / "config.json"
+    normalized = symbol.strip().upper()
+    if not normalized:
+        raise ValueError("stock symbol must be a non-empty string")
+    if not SYMBOL_PATTERN.match(normalized):
+        raise ValueError(
+            f"invalid stock symbol {symbol!r}; expected 1-10 characters of "
+            "letters, digits, dots, or dashes (e.g. AAPL, BRK.B)"
+        )
+    return normalized
 
 
 class UserConfigurationService:
-    """Load, mutate, and persist :class:`UserConfig` as JSON.
+    """Load, mutate, and persist :class:`UserConfig` in SQLite.
 
-    Holds an in-memory copy that is written after each successful mutation.
-    Pass ``config_path`` in tests to avoid touching the real user config dir.
+    Holds an in-memory copy that is written back after each mutation. Pass
+    ``db_path`` (or an open ``database``) in tests to stay off the real
+    user-data directory.
     """
 
-    def __init__(self, config_path: Path | str | None = None) -> None:
-        """Create the service and load or initialize the config file.
+    def __init__(
+        self,
+        db_path: Path | str | None = None,
+        *,
+        database: Database | None = None,
+        legacy_json_path: Path | None | Any = _UNSET,
+    ) -> None:
+        """Open the database and load (or seed) the configuration.
 
-        :param config_path: Optional override path; defaults to
-            :func:`default_config_path`.
-        :raises ValueError: If an existing file is corrupt or invalid.
+        :param db_path: Optional database path; defaults to
+            :func:`~mydash.storage.database.default_database_path`.
+        :param database: Optional pre-built :class:`Database` to reuse.
+        :param legacy_json_path: JSON config to import on a fresh database.
+            Defaults to the real legacy path only when this service also uses
+            the real database, so tests never sweep up a developer's own file.
+        :raises ValueError: If stored preferences cannot be decoded.
         """
-        self.config_path = (
-            Path(config_path) if config_path is not None else default_config_path()
-        )
+        self._owns_database = database is None
+        self.database = database if database is not None else Database(db_path)
+
+        if legacy_json_path is _UNSET:
+            uses_default_database = db_path is None and database is None
+            self._legacy_json_path = (
+                legacy_config_path() if uses_default_database else None
+            )
+        else:
+            self._legacy_json_path = legacy_json_path
+
         self._config = self._load_or_create()
 
-    def _load_or_create(self) -> UserConfig:
-        """Load JSON from disk, or create and save defaults if missing.
+    # -- lifecycle ------------------------------------------------------
 
-        :raises ValueError: On invalid JSON or schema validation failure.
-        """
-        if self.config_path.is_file():
-            try:
-                data = json.loads(self.config_path.read_text(encoding="utf-8"))
-                return UserConfig.model_validate(data)
-            except json.JSONDecodeError as err:
-                raise ValueError(
-                    f"config file is not valid JSON: {self.config_path} ({err})"
-                ) from err
-            except ValidationError as err:
-                raise ValueError(
-                    f"config file has invalid structure: {self.config_path} ({err})"
-                ) from err
-        config = UserConfig()
-        self._config = config
-        self._save()
+    @property
+    def database_path(self) -> Path | str:
+        """Path of the database backing this configuration."""
+        return self.database.path
+
+    def close(self) -> None:
+        """Close the database if this service opened it."""
+        if self._owns_database:
+            self.database.close()
+
+    def __enter__(self) -> UserConfigurationService:
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        self.close()
+
+    # -- loading and persistence ----------------------------------------
+
+    def _load_or_create(self) -> UserConfig:
+        """Return stored preferences, seeding defaults on a fresh database."""
+        connection = self.database.connect()
+        stored = connection.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
+        if stored:
+            return self._read()
+
+        config = self._read_legacy_json() or UserConfig()
+        self._write_all(config)
         return config
 
-    def _save(self) -> None:
-        """Atomically write the current config to disk (temp file + replace)."""
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = self._config.model_dump(mode="json")
-        text = json.dumps(payload, indent=2) + "\n"
-        # Write to a sibling temp file then replace to avoid partial configs.
-        fd, tmp_name = tempfile.mkstemp(
-            dir=self.config_path.parent,
-            prefix=".config.",
-            suffix=".tmp",
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
-                tmp_file.write(text)
-            Path(tmp_name).replace(self.config_path)
-        except Exception:
+    def _read(self) -> UserConfig:
+        """Build a :class:`UserConfig` from the settings and watchlist tables."""
+        connection = self.database.connect()
+        rows = connection.execute("SELECT key, value FROM settings").fetchall()
+
+        data: dict[str, Any] = {}
+        for row in rows:
+            key = row["key"]
+            # Ignore keys this version does not know about, so a database written
+            # by a newer mydash still opens instead of hard-failing.
+            if key not in _SETTING_FIELDS:
+                continue
             try:
-                os.unlink(tmp_name)
-            except OSError:
-                pass
-            raise
+                data[key] = json.loads(row["value"])
+            except json.JSONDecodeError as err:
+                raise ValueError(
+                    f"stored preference {key!r} is not valid JSON "
+                    f"({self.database_path}): {err}"
+                ) from err
+
+        data["stock_symbols"] = self._read_symbols()
+
+        try:
+            return UserConfig.model_validate(data)
+        except ValidationError as err:
+            raise ValueError(
+                f"stored preferences have an invalid structure "
+                f"({self.database_path}): {err}"
+            ) from err
+
+    def _read_symbols(self) -> list[str]:
+        """Return watch-list symbols in their stored order."""
+        rows = self.database.connect().execute(
+            "SELECT symbol FROM watchlist ORDER BY position"
+        ).fetchall()
+        return [row["symbol"] for row in rows]
+
+    def _read_legacy_json(self) -> UserConfig | None:
+        """Import the pre-SQLite JSON config, if one is present.
+
+        A corrupt legacy file is skipped rather than blocking startup — the
+        file stays put so it can be inspected by hand.
+        """
+        path = self._legacy_json_path
+        if path is None or not Path(path).is_file():
+            return None
+
+        path = Path(path)
+        try:
+            config = UserConfig.model_validate_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+
+        try:
+            path.replace(path.with_suffix(path.suffix + LEGACY_MIGRATED_SUFFIX))
+        except OSError:
+            # Import still succeeded; leaving the original in place is harmless
+            # because a populated database is never re-seeded from it.
+            pass
+        return config
+
+    def _write_all(self, config: UserConfig) -> None:
+        """Persist every field of *config* in one transaction."""
+        payload = config.model_dump(mode="json")
+        now = _timestamp()
+        with self.database.transaction() as connection:
+            connection.executemany(
+                _UPSERT_SETTING,
+                [(field, json.dumps(payload[field]), now) for field in _SETTING_FIELDS],
+            )
+            self._replace_symbols(connection, config.stock_symbols, now)
+
+    def _write_setting(self, field: str, value: Any) -> None:
+        """Upsert a single scalar preference."""
+        with self.database.transaction() as connection:
+            connection.execute(
+                _UPSERT_SETTING, (field, json.dumps(value), _timestamp())
+            )
+
+    def _write_symbols(self, symbols: list[str]) -> None:
+        """Replace the stored watch list with *symbols*, preserving order."""
+        with self.database.transaction() as connection:
+            self._replace_symbols(connection, symbols, _timestamp())
+
+    @staticmethod
+    def _replace_symbols(
+        connection: sqlite3.Connection, symbols: list[str], now: str
+    ) -> None:
+        """Rewrite the watchlist rows inside an open transaction."""
+        connection.execute("DELETE FROM watchlist")
+        connection.executemany(
+            "INSERT INTO watchlist (symbol, position, added_at) VALUES (?, ?, ?)",
+            [(symbol, index, now) for index, symbol in enumerate(symbols)],
+        )
+
+    # -- whole-configuration access -------------------------------------
 
     def get_configuration(self) -> UserConfig:
         """Return a deep copy of the current configuration."""
@@ -149,7 +290,14 @@ class UserConfigurationService:
         :param config: New preferences to store.
         """
         self._config = config.model_copy(deep=True)
-        self._save()
+        self._write_all(self._config)
+
+    def reset(self) -> UserConfig:
+        """Restore the shipped defaults and return the fresh configuration."""
+        self.set_configuration(UserConfig())
+        return self.get_configuration()
+
+    # -- city and coordinates -------------------------------------------
 
     async def set_city(self, city: str) -> None:
         """Geocode *city*, store name + coordinates, and persist.
@@ -166,9 +314,16 @@ class UserConfigurationService:
         client = get_geocoding_client(provider=self._config.provider_geocoding)
         await client.set_coordinates(city=city)
         coordinates = client.get_coordinates()
+
         self._config.city = city
         self._config.coordinates = coordinates
-        self._save()
+        with self.database.transaction() as connection:
+            now = _timestamp()
+            connection.execute(_UPSERT_SETTING, ("city", json.dumps(city), now))
+            connection.execute(
+                _UPSERT_SETTING,
+                ("coordinates", coordinates.model_dump_json(), now),
+            )
 
     def get_city(self) -> str:
         """Return the configured city name."""
@@ -178,46 +333,57 @@ class UserConfigurationService:
         """Return a copy of the stored coordinates for the city."""
         return self._config.coordinates.model_copy()
 
-    def _add_stock_symbol(self, symbol: str) -> None:
-        """Append *symbol* (uppercase) if not already present; then persist."""
-        normalized = symbol.strip().upper()
-        if not normalized:
-            raise ValueError("stock symbol must be a non-empty string")
-        if normalized not in self._config.stock_symbols:
-            self._config.stock_symbols.append(normalized)
-            self._save()
-
-    def _remove_stock_symbol(self, symbol: str) -> None:
-        """Remove *symbol* from the list or raise if missing."""
-        normalized = symbol.strip().upper()
-        if not normalized:
-            raise ValueError("stock symbol must be a non-empty string")
-        if normalized not in self._config.stock_symbols:
-            raise ValueError(f"stock symbol not in list: {normalized}")
-        self._config.stock_symbols = [
-            s for s in self._config.stock_symbols if s != normalized
-        ]
-        self._save()
+    # -- stock watch list -----------------------------------------------
 
     def add_stock_symbol(self, symbol: str) -> None:
         """Add a ticker to the watch list (case-insensitive; stored uppercase).
 
+        Adding a symbol already on the list is a no-op.
+
         :param symbol: Ticker symbol (e.g. ``aapl`` → ``AAPL``).
-        :raises ValueError: If *symbol* is empty.
+        :raises ValueError: If *symbol* is empty or malformed.
         """
-        self._add_stock_symbol(symbol)
+        normalized = normalize_symbol(symbol)
+        if normalized in self._config.stock_symbols:
+            return
+        self._config.stock_symbols.append(normalized)
+        self._write_symbols(self._config.stock_symbols)
 
     def remove_stock_symbol(self, symbol: str) -> None:
         """Remove a ticker from the watch list.
 
         :param symbol: Ticker symbol to remove.
-        :raises ValueError: If *symbol* is empty or not in the list.
+        :raises ValueError: If *symbol* is empty, malformed, or not on the list.
         """
-        self._remove_stock_symbol(symbol)
+        normalized = normalize_symbol(symbol)
+        if normalized not in self._config.stock_symbols:
+            raise ValueError(f"stock symbol not in list: {normalized}")
+        self._config.stock_symbols = [
+            existing
+            for existing in self._config.stock_symbols
+            if existing != normalized
+        ]
+        self._write_symbols(self._config.stock_symbols)
+
+    def set_stock_symbols(self, symbols: list[str]) -> None:
+        """Replace the whole watch list, keeping the given order.
+
+        :param symbols: Tickers to store; duplicates are collapsed.
+        :raises ValueError: If any symbol is empty or malformed.
+        """
+        normalized: list[str] = []
+        for symbol in symbols:
+            candidate = normalize_symbol(symbol)
+            if candidate not in normalized:
+                normalized.append(candidate)
+        self._config.stock_symbols = normalized
+        self._write_symbols(normalized)
 
     def get_stock_symbols(self) -> list[str]:
         """Return a copy of the configured ticker symbols."""
         return list(self._config.stock_symbols)
+
+    # -- news -----------------------------------------------------------
 
     def set_news_category(self, category: str) -> None:
         """Set the news category used by the brief.
@@ -229,11 +395,13 @@ class UserConfigurationService:
         if not category:
             raise ValueError("news category must be a non-empty string")
         self._config.news_category = category
-        self._save()
+        self._write_setting("news_category", category)
 
     def get_news_category(self) -> str:
         """Return the configured news category."""
         return self._config.news_category
+
+    # -- weather units --------------------------------------------------
 
     def set_weather_forecast_units(self, units: str) -> None:
         """Set the weather unit preset (``metric`` or ``imperial``).
@@ -248,11 +416,13 @@ class UserConfigurationService:
                 f"{sorted(KNOWN_WEATHER_UNITS)}"
             )
         self._config.weather_units = normalized  # type: ignore[assignment]
-        self._save()
+        self._write_setting("weather_units", normalized)
 
     def get_weather_forecast_units(self) -> WeatherUnits:
         """Return the configured weather unit preset."""
         return self._config.weather_units
+
+    # -- providers ------------------------------------------------------
 
     def set_news_provider(self, provider: str) -> None:
         """Set the news client provider id.
@@ -316,4 +486,18 @@ class UserConfigurationService:
                 f"invalid provider {provider!r}; expected one of {sorted(allowed)}"
             )
         setattr(self._config, field, normalized)
-        self._save()
+        self._write_setting(field, normalized)
+
+
+_UPSERT_SETTING: Final = """
+    INSERT INTO settings (key, value, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = excluded.updated_at
+"""
+
+
+def _timestamp() -> str:
+    """Return an ISO-8601 UTC timestamp for ``updated_at`` columns."""
+    return datetime.now(timezone.utc).isoformat()
