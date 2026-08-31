@@ -192,6 +192,28 @@ def test_brief_only_flag_selects_domains(config_db, mocker):
     assert service.build.await_args.kwargs["domains"] == ["weather", "news"]
 
 
+def test_brief_rejects_an_unknown_panel(config_db, mocker):
+    service = _patch_brief(mocker, _sample_brief())
+
+    result = runner.invoke(app, ["brief", "--only", "horoscope"])
+
+    # A usage error, not a crash: exit 2, and no fetch was attempted.
+    assert result.exit_code == 2
+    assert "horoscope" in result.output
+    assert "stocks" in result.output
+    service.build.assert_not_awaited()
+
+
+def test_brief_only_flag_is_case_insensitive(config_db, mocker):
+    service = _patch_brief(mocker, _sample_brief())
+    mocker.patch("mydash.cli.commands.brief.render_brief")
+
+    result = runner.invoke(app, ["brief", "--only", "Weather,NEWS"])
+
+    assert result.exit_code == 0, result.output
+    assert service.build.await_args.kwargs["domains"] == ["weather", "news"]
+
+
 def test_brief_compact_flag_reaches_the_renderer(config_db, mocker):
     _patch_brief(mocker, _sample_brief())
     render = mocker.patch("mydash.cli.commands.brief.render_brief")

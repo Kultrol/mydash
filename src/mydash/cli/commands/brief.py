@@ -188,10 +188,24 @@ def _http(service: UserConfigurationService, refresh: bool) -> HttpApiClient:
 
 
 def _parse_domains(only: str | None) -> list[str] | None:
-    """Split a ``--only`` value into domain names, or ``None`` for all."""
+    """Split and validate a ``--only`` value, or return ``None`` for all panels.
+
+    Validated here, where the input arrives, so a typo reads as a usage error
+    instead of surfacing from inside BriefService as an unhandled failure.
+
+    :raises typer.BadParameter: If a name is not a known panel.
+    """
     if not only:
         return None
-    return [part.strip() for part in only.split(",") if part.strip()]
+    parsed = [part.strip().lower() for part in only.split(",") if part.strip()]
+    unknown = [name for name in parsed if name not in BRIEF_DOMAINS]
+    if unknown:
+        raise typer.BadParameter(
+            f"unknown panel(s) {', '.join(unknown)}; "
+            f"expected any of {', '.join(BRIEF_DOMAINS)}",
+            param_hint="--only",
+        )
+    return parsed
 
 
 def _parse_symbols(symbols: str | None) -> list[str]:
