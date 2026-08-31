@@ -26,7 +26,9 @@ from mydash.services.user_config import UserConfig, UserConfigurationService
 
 OK = "✅"
 FAILED = "❌"
-SKIPPED = "⚠️ "
+# No trailing space: the status column is sized in cells, and a variation
+# selector plus padding pushed this past the width and rendered as an ellipsis.
+SKIPPED = "⚠️"
 
 
 @dataclass
@@ -180,7 +182,7 @@ async def _describe_stocks(config: UserConfig, http: HttpApiClient) -> str:
 def _render(checks: list[Check], *, offline: bool) -> None:
     """Print the checks as a status table with a verdict underneath."""
     table = ui.detail_table()
-    table.add_column("", width=2, no_wrap=True)
+    table.add_column("", width=3, no_wrap=True)
     table.add_column("Check", style="heading", no_wrap=True)
     table.add_column("Detail", style="value", overflow="fold")
     for check in checks:

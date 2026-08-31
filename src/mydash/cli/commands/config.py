@@ -122,7 +122,7 @@ def env(
 
     loaded = {path for path in load_environment()}
     table = ui.detail_table()
-    table.add_column("", width=2, no_wrap=True)
+    table.add_column("", width=3, no_wrap=True)
     table.add_column("Location", style="value", overflow="fold")
     table.add_column("Status", style="muted", no_wrap=True)
 
@@ -130,7 +130,7 @@ def env(
         if path in loaded:
             table.add_row("✅", str(path), "read")
         elif path.exists():
-            table.add_row("⚠️ ", str(path), "present but unreadable")
+            table.add_row("⚠️", str(path), "present but unreadable")
         else:
             table.add_row("·", str(path), "not there")
 
