@@ -31,8 +31,9 @@ class HttpTimeoutError(RequestError):
         # Call HttpApiError directly so we keep a timeout-specific message
         HttpApiError.__init__(
             self,
-            f"Request timed out while requesting {method_info}{url!r}{timeout_info}.{error_info} "
-            f"The server did not respond in time. Try again later or increase the timeout.",
+            f"Request timed out while requesting {method_info}{url!r}"
+            f"{timeout_info}.{error_info} The server did not respond in time. "
+            f"Try again later or increase the timeout.",
         )
 
 

@@ -10,7 +10,7 @@ is usable. Results are deduplicated by URL and returned newest first.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -89,7 +89,7 @@ class NoozraClient(NewsClient):
 def _published_key(headline: HeadLine) -> datetime:
     """Sort key that survives a mix of aware and naive timestamps."""
     when = headline.published_time
-    return when if when.tzinfo is not None else when.replace(tzinfo=timezone.utc)
+    return when if when.tzinfo is not None else when.replace(tzinfo=UTC)
 
 
 def _parse_articles(articles: Any, *, category: str) -> list[HeadLine]:

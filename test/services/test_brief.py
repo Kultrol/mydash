@@ -6,7 +6,7 @@ DailyBrief, and survives one domain failing.
 """
 
 import asyncio
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -58,7 +58,7 @@ def _sample_headlines() -> NewsHeadlines:
                 description=None,
                 source_url="https://example.com",
                 category="tech",
-                published_time=datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc),
+                published_time=datetime(2026, 7, 13, 12, 0, tzinfo=UTC),
             )
         ]
     )
@@ -71,7 +71,7 @@ def _sample_quotes() -> StockQuotes:
                 ticker_name="SPY",
                 ask_price=1.0,
                 bid_price=1.0,
-                time=datetime(2026, 7, 13, 14, 0, tzinfo=timezone.utc),
+                time=datetime(2026, 7, 13, 14, 0, tzinfo=UTC),
             )
         ]
     )
@@ -84,7 +84,7 @@ def _sample_bars() -> StockBars:
                 ticker_name="SPY",
                 open=1.0,
                 close=1.0,
-                time=datetime(2026, 7, 13, 14, 0, tzinfo=timezone.utc),
+                time=datetime(2026, 7, 13, 14, 0, tzinfo=UTC),
             )
         ]
     )

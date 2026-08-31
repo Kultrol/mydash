@@ -189,7 +189,9 @@ class ResponseCache:
                 (time.time(),),
             ).fetchone()
         except _STORAGE_ERRORS:
-            return CacheStats(entries=0, expired=0, total_bytes=0, oldest=None, newest=None)
+            return CacheStats(
+                entries=0, expired=0, total_bytes=0, oldest=None, newest=None
+            )
 
         return CacheStats(
             entries=row["entries"],

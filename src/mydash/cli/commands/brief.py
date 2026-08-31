@@ -48,13 +48,12 @@ def brief(
     """Build and display the daily brief using saved user preferences."""
     domains = _parse_domains(only)
 
-    with config_service() as service:
-        with ui.spinner("Gathering your brief…"):
-            data = asyncio.run(
-                BriefService().build(
-                    config_service=service, refresh=refresh, domains=domains
-                )
+    with config_service() as service, ui.spinner("Gathering your brief…"):
+        data = asyncio.run(
+            BriefService().build(
+                config_service=service, refresh=refresh, domains=domains
             )
+        )
 
     if as_json:
         ui.console.print_json(data.model_dump_json())
@@ -71,7 +70,9 @@ def weather(
         DEFAULT_HOURS, "--hours", min=1, max=48, help="How many hours to show."
     ),
     units: str | None = typer.Option(
-        None, "--units", help=f"Override units ({', '.join(sorted(KNOWN_WEATHER_UNITS))})."
+        None,
+        "--units",
+        help=f"Override units ({', '.join(sorted(KNOWN_WEATHER_UNITS))}).",
     ),
     refresh: bool = typer.Option(False, "--refresh", "-r", help=REFRESH_HELP),
     compact: bool = typer.Option(False, "--compact", "-c", help="Fewer columns."),

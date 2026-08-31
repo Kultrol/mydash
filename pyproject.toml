@@ -4,7 +4,23 @@ version = "0.6.0"
 description = "Terminal daily dashboard: weather, news, and markets in one brief."
 readme = "README.md"
 authors = [{ name = "Kevin Medina", email = "physicskev@outlook.com" }]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["cli", "dashboard", "terminal", "weather", "news", "stocks", "tui"]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Utilities",
+  "Typing :: Typed",
+]
 
 requires-python = ">=3.12"
 dependencies = [
@@ -19,20 +35,58 @@ dependencies = [
 [project.scripts]
 mydash = "mydash.cli.main:app"
 
+[project.urls]
+Homepage = "https://github.com/Kultrol/mydash"
+Repository = "https://github.com/Kultrol/mydash"
+Issues = "https://github.com/Kultrol/mydash/issues"
+Changelog = "https://github.com/Kultrol/mydash/blob/main/CHANGELOG.md"
+
 [dependency-groups]
 dev = [
   "pytest>=9.1.1",
   "pytest-mock>=3.15.1",
+  "ruff>=0.14.0",
 ]
-
-[project.urls]
-Homepage = "https://github.com/Kultrol/mydash"
-Repository = "https://github.com/Kultrol/mydash"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/mydash"]
+# py.typed ships so the "Typing :: Typed" classifier is true for consumers.
+artifacts = ["src/mydash/py.typed"]
+
+[tool.hatch.build.targets.sdist]
+# Ship what someone needs to build, test, and understand the project.
+include = [
+  "/src",
+  "/test",
+  "/docs",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/LICENSE",
+  "/.env.example",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["test"]
 addopts = "--import-mode=importlib"
+
+[tool.ruff]
+line-length = 90
+target-version = "py312"
+src = ["src", "test"]
+
+[tool.ruff.lint.isort]
+# The test suite is a first-party package, not a third-party "test" module.
+known-first-party = ["mydash", "test"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM", "UP"]
+ignore = [
+  # Panels and forecasts are full of intentional emoji, en dashes, and °C.
+  "RUF001",
+  "RUF002",
+  "RUF003",
+]

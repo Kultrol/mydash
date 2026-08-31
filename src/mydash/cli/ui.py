@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from rich import box
@@ -219,7 +219,7 @@ def local_time(when: datetime) -> str:
 
 def relative_time(when: datetime) -> str:
     """Describe *when* relative to now, e.g. ``12m ago`` or ``3d ago``."""
-    reference = datetime.now(timezone.utc) if when.tzinfo else datetime.now()
+    reference = datetime.now(UTC) if when.tzinfo else datetime.now()
     seconds = (reference - when).total_seconds()
 
     if seconds < 0:

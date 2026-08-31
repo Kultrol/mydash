@@ -21,6 +21,7 @@ from mydash.client.news.factory import get_news_client
 from mydash.client.stocks.providers.alpaca.alpaca import AlpacaClient
 from mydash.client.stocks.providers.alpaca.errors import MissingCredentialsError
 from mydash.client.weather.factory import get_weather_client
+from mydash.env import load_environment, user_env_path
 from mydash.services.user_config import UserConfig, UserConfigurationService
 
 OK = "✅"
@@ -69,6 +70,7 @@ def _local_checks(
 
     return [
         Check("Database", OK, str(service.database_path)),
+        Check("Credentials file", *_env_file()),
         Check(
             "Preferences",
             OK,
@@ -86,6 +88,17 @@ def _local_checks(
             f"{stats.fresh} fresh, {stats.expired} expired",
         ),
     ]
+
+
+def _env_file() -> tuple[str, str]:
+    """Report which env file supplied credentials, if any."""
+    loaded = load_environment()
+    if loaded:
+        return OK, ", ".join(str(path) for path in loaded)
+    return (
+        SKIPPED,
+        f"none found — 'mydash config env --create' writes one at {user_env_path()}",
+    )
 
 
 def _credentials() -> tuple[str, str]:
@@ -126,7 +139,7 @@ async def _provider_checks(
         )
 
     checks: list[Check] = []
-    for (name, _), result in zip(probes, results):
+    for (name, _), result in zip(probes, results, strict=True):
         if isinstance(result, BaseException):
             checks.append(Check(name, FAILED, str(result) or type(result).__name__))
         else:
@@ -142,7 +155,9 @@ async def _describe_geocoding(config: UserConfig, http: HttpApiClient) -> str:
 
 async def _describe_weather(config: UserConfig, http: HttpApiClient) -> str:
     client = get_weather_client(config.provider_weather, http_client=http)
-    forecast = await client.fetch_forecast(config.coordinates, units=config.weather_units)
+    forecast = await client.fetch_forecast(
+        config.coordinates, units=config.weather_units
+    )
     hours = sum(len(day.hours) for day in forecast.days)
     return f"{config.provider_weather} → {hours} hours, {forecast.timezone or 'no zone'}"
 

@@ -4,7 +4,7 @@ Focus on ``MultiDayForecast.upcoming_hours``, which decides what the weather
 panel shows and has to reason about the forecast location's clock, not ours.
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -67,10 +67,9 @@ def test_upcoming_hours_on_an_empty_forecast():
 
 
 def test_upcoming_hours_tolerates_an_aware_reference_time():
-    from datetime import timezone as dt_timezone
 
     hours = _forecast().upcoming_hours(
-        1, now=datetime(2026, 8, 30, 9, 0, tzinfo=dt_timezone.utc)
+        1, now=datetime(2026, 8, 30, 9, 0, tzinfo=UTC)
     )
 
     assert hours[0].time.hour == 9

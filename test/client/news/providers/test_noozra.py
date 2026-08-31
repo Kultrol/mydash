@@ -5,7 +5,7 @@ deduplication, and how gracefully malformed articles are handled.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -238,5 +238,5 @@ def test_published_time_keeps_its_timezone():
     http = FakeHttpClient({"articles": [_article(published_at="2026-08-30T12:00:00Z")]})
 
     assert _fetch(http).headlines[0].published_time == datetime(
-        2026, 8, 30, 12, 0, tzinfo=timezone.utc
+        2026, 8, 30, 12, 0, tzinfo=UTC
     )

@@ -11,7 +11,6 @@ import sys
 from types import TracebackType
 
 import typer
-from dotenv import load_dotenv
 from rich.text import Text
 
 from mydash import __version__
@@ -23,6 +22,7 @@ from mydash.cli.commands import doctor as doctor_command
 from mydash.cli.commands import init as init_command
 from mydash.cli.commands.set import set_app
 from mydash.cli.context import config_service, flags
+from mydash.env import load_environment
 
 app = typer.Typer(
     help="mydash — your personal daily dashboard in the terminal.",
@@ -30,7 +30,9 @@ app = typer.Typer(
     add_completion=True,
 )
 
-load_dotenv()
+# Credentials come from the environment, a project .env, or the user-level
+# file beside the database — see mydash.env for the precedence order.
+load_environment()
 
 # Daily dashboard and its single-panel shortcuts.
 app.command("brief")(brief_commands.brief)

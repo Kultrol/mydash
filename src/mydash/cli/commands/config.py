@@ -3,10 +3,20 @@
 from __future__ import annotations
 
 import typer
+from rich.console import Group
 from rich.text import Text
 
 from mydash.cli import ui
 from mydash.cli.context import config_service
+from mydash.env import (
+    ALPACA_KEY_VAR,
+    ALPACA_SECRET_VAR,
+    candidate_paths,
+    has_alpaca_credentials,
+    load_environment,
+    user_env_path,
+    write_template,
+)
 from mydash.services.user_config import UserConfig
 
 app = typer.Typer(help="⚙️  Inspect and manage stored preferences.", no_args_is_help=True)
@@ -94,4 +104,91 @@ def reset(
         f"Preferences reset to defaults — city is "
         f"[bold]{restored.city}[/bold] again.",
         title="⚙️  Config · reset",
+    )
+
+
+@app.command("env")
+def env(
+    create: bool = typer.Option(
+        False,
+        "--create",
+        help="Write a placeholder credentials file you can fill in.",
+    ),
+) -> None:
+    """Show where mydash looks for API credentials, and whether it found any."""
+    if create:
+        _create_template()
+        return
+
+    loaded = {path for path in load_environment()}
+    table = ui.detail_table()
+    table.add_column("", width=2, no_wrap=True)
+    table.add_column("Location", style="value", overflow="fold")
+    table.add_column("Status", style="muted", no_wrap=True)
+
+    for path in candidate_paths():
+        if path in loaded:
+            table.add_row("✅", str(path), "read")
+        elif path.exists():
+            table.add_row("⚠️ ", str(path), "present but unreadable")
+        else:
+            table.add_row("·", str(path), "not there")
+
+    body = Group(
+        table,
+        Text(""),
+        _credentials_line(),
+    )
+    ui.console.print(
+        ui.panel(
+            body,
+            title="🔐 Credentials",
+            border="border.info",
+            subtitle="highest precedence first",
+        )
+    )
+
+
+def _credentials_line() -> Text:
+    """One line saying whether the Alpaca variables are actually set."""
+    line = Text()
+    if has_alpaca_credentials():
+        line.append("Alpaca credentials found. ", style="success")
+        line.append("The markets panel is on.", style="muted")
+        return line
+
+    line.append("Alpaca credentials not set", style="warn")
+    line.append(
+        f" ({ALPACA_KEY_VAR}, {ALPACA_SECRET_VAR}).\n", style="muted"
+    )
+    line.append("Weather and headlines work without them. Run ", style="muted")
+    line.append("mydash config env --create", style="accent")
+    line.append(" to start a credentials file.", style="muted")
+    return line
+
+
+def _create_template() -> None:
+    """Write the placeholder credentials file, refusing to clobber a real one."""
+    destination = user_env_path()
+    try:
+        written = write_template(destination)
+    except FileExistsError:
+        ui.error(
+            f"[value]{destination}[/value] already exists — "
+            "edit it rather than overwriting your keys.",
+            title="🔐 Credentials",
+        )
+        raise typer.Exit(1) from None
+    except OSError as err:
+        ui.error(f"Could not write {destination}: {err}", title="🔐 Credentials")
+        raise typer.Exit(1) from err
+
+    body = Text()
+    body.append("Wrote a placeholder credentials file:\n\n", style="value")
+    body.append(f"  {written}\n\n", style="accent")
+    body.append("Fill in your Alpaca key and secret, then run ", style="muted")
+    body.append("mydash doctor", style="accent")
+    body.append(" to check them.", style="muted")
+    ui.console.print(
+        ui.panel(body, title="🔐 Credentials", border="border.success")
     )

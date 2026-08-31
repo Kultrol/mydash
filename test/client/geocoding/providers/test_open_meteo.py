@@ -67,8 +67,18 @@ def test_search_preserves_provider_ranking():
     http = FakeHttpClient(
         {
             "results": [
-                _result(name="Springfield", admin1="Missouri", latitude=37.2, longitude=-93.3),
-                _result(name="Springfield", admin1="Illinois", latitude=39.8, longitude=-89.6),
+                _result(
+                    name="Springfield",
+                    admin1="Missouri",
+                    latitude=37.2,
+                    longitude=-93.3,
+                ),
+                _result(
+                    name="Springfield",
+                    admin1="Illinois",
+                    latitude=39.8,
+                    longitude=-89.6,
+                ),
             ]
         }
     )

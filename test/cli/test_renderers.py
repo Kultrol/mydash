@@ -5,7 +5,7 @@ text a reader would see. Covers the states that are easy to get wrong — a
 failed domain, an empty result, partial data, and compact mode.
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from rich.console import Console
@@ -24,7 +24,7 @@ from mydash.models.weather import (
     MultiDayForecast,
 )
 
-NOW = datetime(2026, 7, 13, 14, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 13, 14, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -240,7 +240,7 @@ def _headlines(count: int = 3) -> NewsHeadlines:
                 description=None,
                 source_url=f"https://example.com/{index}",
                 category="tech",
-                published_time=datetime.now(timezone.utc) - timedelta(hours=index),
+                published_time=datetime.now(UTC) - timedelta(hours=index),
             )
             for index in range(1, count + 1)
         ]

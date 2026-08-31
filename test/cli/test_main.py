@@ -4,7 +4,7 @@ Strategy: CliRunner for command smoke; mock services (not HTTP) throughout.
 The wide-console fixture keeps Rich from truncating the text being asserted on.
 """
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -54,7 +54,7 @@ def _sample_brief(**overrides) -> DailyBrief:
                     description=None,
                     source_url="https://example.com",
                     category="politics",
-                    published_time=datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc),
+                    published_time=datetime(2026, 7, 13, 12, 0, tzinfo=UTC),
                 )
             ]
         ),
@@ -64,7 +64,7 @@ def _sample_brief(**overrides) -> DailyBrief:
                     ticker_name="SPY",
                     ask_price=1.0,
                     bid_price=1.0,
-                    time=datetime(2026, 7, 13, 14, 0, tzinfo=timezone.utc),
+                    time=datetime(2026, 7, 13, 14, 0, tzinfo=UTC),
                 )
             ]
         ),
@@ -74,7 +74,7 @@ def _sample_brief(**overrides) -> DailyBrief:
                     ticker_name="SPY",
                     open=1.0,
                     close=1.0,
-                    time=datetime(2026, 7, 13, 14, 0, tzinfo=timezone.utc),
+                    time=datetime(2026, 7, 13, 14, 0, tzinfo=UTC),
                 )
             ]
         ),
@@ -369,6 +369,56 @@ def test_config_reset_can_be_declined(config_db):
 
     assert result.exit_code == 0, result.output
     assert UserConfigurationService(db_path=config_db).get_news_category() == "science"
+
+
+def test_config_env_lists_where_credentials_come_from(config_db):
+    result = runner.invoke(app, ["config", "env"])
+
+    assert result.exit_code == 0, result.output
+    assert ".env" in result.output
+    assert "precedence" in result.output
+
+
+def test_config_env_create_writes_a_template(config_db, monkeypatch, tmp_path):
+    from mydash.env import user_env_path
+
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["config", "env", "--create"])
+
+    assert result.exit_code == 0, result.output
+    assert user_env_path().is_file()
+    assert "STOCK_ALPACA_API_KEY_ID" in user_env_path().read_text(encoding="utf-8")
+
+
+def test_config_env_create_refuses_to_clobber(config_db, monkeypatch, tmp_path):
+    from mydash.env import user_env_path
+
+    monkeypatch.chdir(tmp_path)
+    path = user_env_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("STOCK_ALPACA_API_KEY_ID=real-key\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["config", "env", "--create"])
+
+    assert result.exit_code == 1
+    assert "already exists" in result.output
+    assert "real-key" in path.read_text(encoding="utf-8")
+
+
+def test_doctor_reports_the_credentials_file(config_db, monkeypatch, tmp_path):
+    from mydash.env import user_env_path
+
+    monkeypatch.chdir(tmp_path)
+    path = user_env_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "STOCK_ALPACA_API_KEY_ID=k\nSTOCK_ALPACA_API_SECRET_KEY=s\n", encoding="utf-8"
+    )
+
+    result = runner.invoke(app, ["doctor", "--offline"])
+
+    assert result.exit_code == 0, result.output
+    assert "Credentials file" in result.output
 
 
 def test_cache_info_reports_an_empty_cache(config_db):

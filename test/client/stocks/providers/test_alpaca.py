@@ -6,7 +6,7 @@ is the main thing under test: one bad symbol must not sink the batch.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -141,7 +141,7 @@ def test_fetch_quotes_returns_one_quote_per_symbol(alpaca_env):
     first = result.quotes[0]
     assert first.ask_price == 1.5
     assert first.bid_price == 1.4
-    assert first.time == datetime(2026, 8, 30, 14, 30, tzinfo=timezone.utc)
+    assert first.time == datetime(2026, 8, 30, 14, 30, tzinfo=UTC)
 
 
 def test_quotes_keep_the_requested_symbol_order(alpaca_env):
@@ -200,7 +200,7 @@ def test_fetch_bars_returns_one_bar_per_symbol(alpaca_env):
     first = result.bars[0]
     assert first.open == 100.0
     assert first.close == 101.5
-    assert first.time == datetime(2026, 8, 30, 14, 30, tzinfo=timezone.utc)
+    assert first.time == datetime(2026, 8, 30, 14, 30, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(

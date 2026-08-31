@@ -18,7 +18,8 @@ import json
 import os
 import re
 import sqlite3
-from datetime import datetime, timezone
+from contextlib import suppress
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final, Literal
 
@@ -247,12 +248,10 @@ class UserConfigurationService:
         except (OSError, ValueError):
             return None
 
-        try:
+        # Import already succeeded; leaving the original in place is harmless
+        # because a populated database is never re-seeded from it.
+        with suppress(OSError):
             path.replace(path.with_suffix(path.suffix + LEGACY_MIGRATED_SUFFIX))
-        except OSError:
-            # Import still succeeded; leaving the original in place is harmless
-            # because a populated database is never re-seeded from it.
-            pass
         return config
 
     def _write_all(self, config: UserConfig) -> None:
@@ -529,4 +528,4 @@ _UPSERT_SETTING: Final = """
 
 def _timestamp() -> str:
     """Return an ISO-8601 UTC timestamp for ``updated_at`` columns."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

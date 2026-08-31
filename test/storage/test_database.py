@@ -38,7 +38,7 @@ def test_schema_creates_expected_tables(db_path: Path):
         ).fetchall()
 
     names = {row["name"] for row in rows}
-    assert EXPECTED_TABLES <= names
+    assert names >= EXPECTED_TABLES
 
 
 def test_schema_version_is_recorded(db_path: Path):
@@ -49,12 +49,11 @@ def test_schema_version_is_recorded(db_path: Path):
 
 
 def test_reopening_an_existing_database_keeps_data(db_path: Path):
-    with Database(db_path) as db:
-        with db.transaction() as conn:
-            conn.execute(
-                "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
-                ("city", '"Miami"', "2026-08-30T00:00:00Z"),
-            )
+    with Database(db_path) as db, db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
+            ("city", '"Miami"', "2026-08-30T00:00:00Z"),
+        )
 
     with Database(db_path) as reopened:
         row = reopened.connect().execute(
@@ -82,13 +81,12 @@ def test_transaction_rolls_back_on_error(db_path: Path):
     db = Database(db_path)
     db.connect()
 
-    with pytest.raises(RuntimeError, match="boom"):
-        with db.transaction() as conn:
-            conn.execute(
-                "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
-                ("city", '"Seattle"', "2026-08-30T00:00:00Z"),
-            )
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError, match="boom"), db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
+            ("city", '"Seattle"', "2026-08-30T00:00:00Z"),
+        )
+        raise RuntimeError("boom")
 
     remaining = db.connect().execute("SELECT COUNT(*) FROM settings").fetchone()[0]
     assert remaining == 0
@@ -126,7 +124,7 @@ def test_memory_database_never_touches_disk(tmp_path: Path):
             "SELECT name FROM sqlite_master WHERE type = 'table'"
         ).fetchall()
 
-    assert EXPECTED_TABLES <= {row["name"] for row in rows}
+    assert {row["name"] for row in rows} >= EXPECTED_TABLES
     assert not list(tmp_path.iterdir())
 
 
