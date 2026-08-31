@@ -14,14 +14,14 @@ import pytest
 from mydash.models.news import HeadLine, NewsHeadlines
 from mydash.models.stocks import StockBar, StockBars, StockQuote, StockQuotes
 from mydash.models.weather import DayForecast, HourForecast, MultiDayForecast
-from mydash.services.brief import (
+from mydash.services.brief import BriefService, DailyBrief
+from mydash.services.user_config import (
     DEFAULT_CITY,
     DEFAULT_NEWS_CATEGORY,
     DEFAULT_SYMBOLS,
-    BriefService,
-    DailyBrief,
+    UserConfig,
+    UserConfigurationService,
 )
-from mydash.services.user_config import UserConfig, UserConfigurationService
 
 
 def _sample_weather() -> MultiDayForecast:

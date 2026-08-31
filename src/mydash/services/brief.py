@@ -16,9 +16,6 @@ from mydash.models.weather import MultiDayForecast
 from mydash.services.news import NewsService
 from mydash.services.stocks import StocksService
 from mydash.services.user_config import (
-    DEFAULT_CITY,
-    DEFAULT_NEWS_CATEGORY,
-    DEFAULT_SYMBOLS,
     DEFAULT_WEATHER_UNITS,
     UserConfigurationService,
 )
@@ -26,15 +23,7 @@ from mydash.services.weather import WeatherService
 
 WeatherUnits = Literal["metric", "imperial"]
 
-# Re-export defaults for callers/tests that previously imported them from brief.
-__all__ = [
-    "DEFAULT_CITY",
-    "DEFAULT_NEWS_CATEGORY",
-    "DEFAULT_SYMBOLS",
-    "DEFAULT_WEATHER_UNITS",
-    "BriefService",
-    "DailyBrief",
-]
+__all__ = ["BriefService", "DailyBrief"]
 
 
 class DailyBrief(BaseModel):
