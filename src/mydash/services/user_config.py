@@ -24,8 +24,9 @@ from typing import Any, Final, Literal
 from platformdirs import user_config_path
 from pydantic import BaseModel, Field, ValidationError
 
+from mydash.client.geocoding.base import DEFAULT_RESULT_LIMIT
 from mydash.client.geocoding.factory import get_geocoding_client
-from mydash.models.geocoding import Coordinates
+from mydash.models.geocoding import Coordinates, Place
 from mydash.storage.database import APP_NAME, Database
 
 WeatherUnits = Literal["metric", "imperial"]
@@ -299,12 +300,13 @@ class UserConfigurationService:
 
     # -- city and coordinates -------------------------------------------
 
-    async def set_city(self, city: str) -> None:
-        """Geocode *city*, store name + coordinates, and persist.
-
-        Uses the configured geocoding provider (network call).
+    async def search_cities(
+        self, city: str, *, limit: int = DEFAULT_RESULT_LIMIT
+    ) -> list[Place]:
+        """Return ranked geocoding matches for *city* (network call).
 
         :param city: Non-empty place name.
+        :param limit: Maximum matches to return, best first.
         :raises ValueError: If *city* is empty after strip.
         :raises: Provider-specific errors from the geocoding client.
         """
@@ -312,17 +314,34 @@ class UserConfigurationService:
         if not city:
             raise ValueError("city must be a non-empty string")
         client = get_geocoding_client(provider=self._config.provider_geocoding)
-        await client.set_coordinates(city=city)
-        coordinates = client.get_coordinates()
+        return await client.search(city, limit=limit)
 
-        self._config.city = city
-        self._config.coordinates = coordinates
+    async def set_city(self, city: str) -> Place:
+        """Geocode *city*, store the best match, and persist.
+
+        :param city: Non-empty place name.
+        :returns: The stored place, so callers can show what was matched.
+        :raises ValueError: If *city* is empty after strip.
+        :raises: Provider-specific errors from the geocoding client.
+        """
+        places = await self.search_cities(city, limit=1)
+        self.set_city_place(places[0])
+        return places[0]
+
+    def set_city_place(self, place: Place) -> None:
+        """Store an already-resolved *place* as the brief location.
+
+        Used after a person picks between same-named matches, so choosing does
+        not cost a second geocoding request.
+        """
+        self._config.city = place.name
+        self._config.coordinates = place.coordinates
         with self.database.transaction() as connection:
             now = _timestamp()
-            connection.execute(_UPSERT_SETTING, ("city", json.dumps(city), now))
+            connection.execute(_UPSERT_SETTING, ("city", json.dumps(place.name), now))
             connection.execute(
                 _UPSERT_SETTING,
-                ("coordinates", coordinates.model_dump_json(), now),
+                ("coordinates", place.coordinates.model_dump_json(), now),
             )
 
     def get_city(self) -> str:

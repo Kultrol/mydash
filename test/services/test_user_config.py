@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mydash.models.geocoding import Coordinates
+from mydash.models.geocoding import Coordinates, Place
 from mydash.services.user_config import (
     DEFAULT_CITY,
     DEFAULT_NEWS_CATEGORY,
@@ -231,28 +231,69 @@ def test_unknown_setting_keys_are_ignored(db_path: Path):
 # --- city / geocoding -----------------------------------------------------
 
 
+NEW_YORK = Place(
+    name="New York",
+    coordinates=Coordinates(latitude=40.71, longitude=-74.01),
+    country="United States",
+    region="New York",
+)
+
+
+def _patch_geocoding(mocker, *places: Place) -> MagicMock:
+    client = MagicMock()
+    client.search = AsyncMock(return_value=list(places))
+    mocker.patch("mydash.services.user_config.get_geocoding_client", return_value=client)
+    return client
+
+
 def test_set_city_geocodes_and_persists(db_path: Path, mocker):
-    coords = Coordinates(latitude=40.71, longitude=-74.01)
-    geo = MagicMock()
-    geo.set_coordinates = AsyncMock()
-    geo.get_coordinates.return_value = coords
-    mocker.patch("mydash.services.user_config.get_geocoding_client", return_value=geo)
+    client = _patch_geocoding(mocker, NEW_YORK)
 
     with UserConfigurationService(db_path=db_path) as svc:
-        asyncio.run(svc.set_city("New York"))
+        stored = asyncio.run(svc.set_city("new york"))
 
-        geo.set_coordinates.assert_awaited_once_with(city="New York")
+        client.search.assert_awaited_once_with("new york", limit=1)
+        assert stored == NEW_YORK
         assert svc.get_city() == "New York"
-        assert svc.get_coordinates() == coords
+        assert svc.get_coordinates() == NEW_YORK.coordinates
 
     with UserConfigurationService(db_path=db_path) as reloaded:
         assert reloaded.get_city() == "New York"
-        assert reloaded.get_coordinates() == coords
+        assert reloaded.get_coordinates() == NEW_YORK.coordinates
+
+
+def test_search_cities_returns_ranked_matches(service, mocker):
+    springfield_il = Place(
+        name="Springfield",
+        coordinates=Coordinates(latitude=39.8, longitude=-89.6),
+        region="Illinois",
+    )
+    _patch_geocoding(mocker, NEW_YORK, springfield_il)
+
+    matches = asyncio.run(service.search_cities("Springfield", limit=2))
+
+    assert [place.region for place in matches] == ["New York", "Illinois"]
+    # Searching alone must not change the stored city.
+    assert service.get_city() == DEFAULT_CITY
+
+
+def test_set_city_place_stores_without_geocoding(db_path: Path):
+    with UserConfigurationService(db_path=db_path) as svc:
+        svc.set_city_place(NEW_YORK)
+
+    with UserConfigurationService(db_path=db_path) as reloaded:
+        assert reloaded.get_city() == "New York"
+        assert reloaded.get_coordinates() == NEW_YORK.coordinates
 
 
 def test_set_city_rejects_blank(service):
     with pytest.raises(ValueError, match="non-empty"):
         asyncio.run(service.set_city("   "))
+
+
+def test_search_cities_rejects_blank(service):
+    with pytest.raises(ValueError, match="non-empty"):
+        asyncio.run(service.search_cities("   "))
 
 
 # --- legacy JSON import ---------------------------------------------------

@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 from typer.testing import CliRunner
 
 from mydash.cli.main import app
-from mydash.models.geocoding import Coordinates
+from mydash.models.geocoding import Coordinates, Place
 from mydash.services.user_config import UserConfigurationService
 
 runner = CliRunner()
@@ -75,10 +75,14 @@ def test_set_stocks_add_and_news_category(tmp_path: Path, mocker):
 
 def test_set_weather_city(tmp_path: Path, mocker):
     path = tmp_path / "mydash.db"
-    coords = Coordinates(latitude=30.27, longitude=-97.74)
+    austin = Place(
+        name="Austin",
+        coordinates=Coordinates(latitude=30.27, longitude=-97.74),
+        country="United States",
+        region="Texas",
+    )
     geo = MagicMock()
-    geo.set_coordinates = AsyncMock()
-    geo.get_coordinates.return_value = coords
+    geo.search = AsyncMock(return_value=[austin])
     mocker.patch(
         "mydash.services.user_config.get_geocoding_client", return_value=geo
     )
@@ -93,7 +97,7 @@ def test_set_weather_city(tmp_path: Path, mocker):
 
     svc = UserConfigurationService(db_path=path)
     assert svc.get_city() == "Austin"
-    assert svc.get_coordinates() == coords
+    assert svc.get_coordinates() == austin.coordinates
 
 
 def test_set_show(tmp_path: Path, mocker):
