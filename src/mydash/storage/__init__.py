@@ -8,6 +8,10 @@ One database file holds everything the CLI needs between runs:
   :mod:`mydash.storage.cache`)
 """
 
-from mydash.storage.database import Database, default_database_path
+from mydash.storage.database import (
+    Database,
+    DatabaseError,
+    default_database_path,
+)
 
-__all__ = ["Database", "default_database_path"]
+__all__ = ["Database", "DatabaseError", "default_database_path"]
