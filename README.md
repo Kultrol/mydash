@@ -324,33 +324,18 @@ CI runs the suite on Linux and macOS across Python 3.12, 3.13, and 3.14, plus a
 job that resolves to the **oldest** dependency versions the project declares — so
 the `>=` floors in `pyproject.toml` are tested, not just asserted.
 
-### Cutting a release
-
-The version lives in `src/mydash/__init__.py` and nowhere else; `pyproject.toml`
-reads it from there. Bump it, land a matching `CHANGELOG.md` section, then:
-
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-```
-
-The release workflow refuses to publish if the tag and the packaged version
-disagree, then builds and attaches the wheel and sdist to a GitHub Release with
-that version's changelog as the notes.
-
 ---
 
 ## 🔭 Looking ahead
 
 **mydash is a terminal app.** There is no web UI, no API server, and none is planned — every improvement goes into making the CLI faster, clearer, and nicer to live in.
 
-### Path to 1.0
+### After 1.0
 
 - 🧪 **Automation** — CI on every push, so refactors stay safe
 - 🎨 **Themes** — the palette already lives in one place; make it swappable
 - 📦 **Distribution** — a tagged release and a Homebrew formula
 - 📚 **Docs for a stable release** — keep the [CHANGELOG](CHANGELOG.md) current and the command surface intentional
-
-### After 1.0
 
 - 📅 More dashboard domains over time (calendar, tasks, AI-assisted briefs, and similar)
 - 🔌 More providers behind the existing factories, so you can pick your own sources
@@ -385,4 +370,4 @@ MIT — see [`LICENSE`](LICENSE).
 
 **Built with ❤️ by [Kevin Medina](https://github.com/Kultrol) · Miami, FL**
 
-*v0.6.0 · happy briefing ☕*
+*v1.0.0 · happy briefing ☕*
