@@ -3,11 +3,15 @@
 Field names map to Alpaca latest-quotes response keys:
     ask_price ← ap, bid_price ← bp, time ← t
     open <- o, close <- c, time <- t
+
+Collections carry a ``missing`` list so a symbol the provider had nothing for
+(a typo, a delisting, an unsupported ticker) is reported next to the symbols
+that worked, instead of failing the whole request.
 """
 
 import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StockQuote(BaseModel):
@@ -20,9 +24,10 @@ class StockQuote(BaseModel):
 
 
 class StockQuotes(BaseModel):
-    """Collection of quotes returned by ``get_current_stock_quotes``."""
+    """Collection of quotes returned by a stock client."""
 
     quotes: list[StockQuote]
+    missing: list[str] = Field(default_factory=list)
 
 
 class StockBar(BaseModel):
@@ -33,6 +38,7 @@ class StockBar(BaseModel):
 
 
 class StockBars(BaseModel):
-    """Collection of Bars returned by ``get_current_stock_bars``."""
+    """Collection of bars returned by a stock client."""
 
     bars: list[StockBar]
+    missing: list[str] = Field(default_factory=list)

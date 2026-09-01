@@ -1,28 +1,33 @@
-"""Stock quote client protocol.
+"""Stock data client protocol.
 
-Follows the same two-phase pattern as weather and news clients.
+Symbols in, quotes or bars out. Symbols the provider had no data for come back
+in the result's ``missing`` list rather than as an exception.
 """
 
 from abc import abstractmethod
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from mydash.models.stocks import StockBars, StockQuotes
 
 
+@runtime_checkable
 class StockClient(Protocol):
-    """Protocol for stock quote providers."""
+    """Protocol for stock market data providers."""
 
     @abstractmethod
-    async def set_current_stock_quotes(self, symbols: list[str]) -> None:
-        """Fetch latest quotes from the provider and cache them on the client."""
+    async def fetch_quotes(self, symbols: list[str]) -> StockQuotes:
+        """Fetch the latest bid/ask quote for each symbol.
 
-    @abstractmethod
-    def get_current_stock_quotes(self) -> StockQuotes:
-        """Return quotes cached by the most recent ``set_current_stock_quotes`` call."""
+        :param symbols: Ticker symbols to look up.
+        :raises StockClientError: If the request cannot be made at all.
+        """
         ...
 
     @abstractmethod
-    async def set_current_stock_bars(self, symbols: list[str]) -> None: ...
+    async def fetch_bars(self, symbols: list[str]) -> StockBars:
+        """Fetch the latest daily bar for each symbol.
 
-    @abstractmethod
-    def get_current_stock_bars(self) -> StockBars: ...
+        :param symbols: Ticker symbols to look up.
+        :raises StockClientError: If the request cannot be made at all.
+        """
+        ...

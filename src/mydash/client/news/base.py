@@ -1,26 +1,29 @@
 """News client protocol.
 
-Mirrors the weather client two-phase pattern: fetch via ``set_news_headlines``,
-read via ``get_news_headlines``.
+Category in, headlines out — newest first, deduplicated, and capped.
 """
 
 from abc import abstractmethod
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from mydash.models.news import NewsHeadlines
 
+#: Headlines requested when the caller does not say otherwise.
+DEFAULT_HEADLINE_LIMIT = 20
 
+
+@runtime_checkable
 class NewsClient(Protocol):
     """Protocol for news headline providers."""
 
     @abstractmethod
-    async def set_news_headlines(self, category: str) -> None:
-        """Fetch headlines from the provider and cache them on the client instance.
+    async def fetch_headlines(
+        self, category: str, *, limit: int = DEFAULT_HEADLINE_LIMIT
+    ) -> NewsHeadlines:
+        """Fetch headlines for *category*, most recent first.
 
         :param category: News category to request from the provider.
+        :param limit: Maximum headlines to return.
+        :raises NewsClientError: If the provider returns nothing usable.
         """
-
-    @abstractmethod
-    def get_news_headlines(self) -> NewsHeadlines:
-        """Return headlines cached by the most recent ``set_news_headlines`` call."""
         ...

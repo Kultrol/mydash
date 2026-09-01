@@ -2,12 +2,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
-
 from mydash.client.geocoding.base_errors import (
     CityNotFoundError,
-    CoordinatesNotFoundError,
     GeocodingClientError,
-    ResponseError
+    ResponseError,
 )
 
 
@@ -22,6 +20,7 @@ class OpenMeteoResponseError(OpenMeteoClientError, ResponseError):
     - Wrong data types
     - Unexpected JSON structure
     """
+
     def __init__(self, message: str, details: Any = None):
         super().__init__(message)
         self.details = details
@@ -29,23 +28,11 @@ class OpenMeteoResponseError(OpenMeteoClientError, ResponseError):
 
 class OpenMeteoCityNotFoundError(OpenMeteoClientError, CityNotFoundError):
     """The search succeeded, but no matching city/location was found."""
+
     def __init__(self, query: str, details: Any = None):
         super().__init__(f"No results found for '{query}'")
         self.query = query
         self.details = details
-
-
-class OpenMeteoCoordinatesNotFoundError(OpenMeteoClientError, CoordinatesNotFoundError):
-    def __init__(self, coordinates):
-        super().__init__(
-            f"Coordinates not found. Current coordinate:  type:{type(coordinates)!r}, value:{coordinates!r}"
-        )
-
-class CoordinatesSettingError(OpenMeteoClientError):
-    def __init__(self, validation_err: ValidationError):
-        super().__init__(
-            f"Failure to set coordinates. Error occured: {validation_err.errors}"
-        )
 
 
 class ParameterSettingError(OpenMeteoClientError):

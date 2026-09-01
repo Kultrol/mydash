@@ -1,88 +1,122 @@
 """Open-Meteo Geocoding API client implementation.
 
 Free, keyless geocoding via https://geocoding-api.open-meteo.com/v1/search.
-Results are ranked by relevance; this client takes the first (closest) match.
+Results come back ranked by relevance and are returned in that order, so the
+caller can show a person the choice between two same-named towns.
+
+Answers are cached for a month — cities do not move.
 """
+
+from __future__ import annotations
 
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
-from mydash.client.geocoding.base import GeocodingClient
+from mydash.client.geocoding.base import DEFAULT_RESULT_LIMIT, GeocodingClient
 from mydash.client.geocoding.providers.open_meteo.errors import (
-    CoordinatesSettingError,
     OpenMeteoCityNotFoundError,
-    OpenMeteoCoordinatesNotFoundError,
     OpenMeteoResponseError,
     ParameterSettingError,
 )
 from mydash.client.http_api.http_api import HttpApiClient
-from mydash.models.geocoding import Coordinates
+from mydash.models.geocoding import Coordinates, Place
+from mydash.storage.cache import TTL
+
+SEARCH_URL = httpx.URL("https://geocoding-api.open-meteo.com/v1/search")
+#: Open-Meteo rejects counts outside this range.
+MAX_RESULT_LIMIT = 100
 
 
-# Open-Meteo's Geocoding API is mature, so its query parameters are modeled here
-# and expected to remain stable across API versions.
 class OpenMeteoParams(BaseModel):
     """Validated query parameters for the Open-Meteo Geocoding search endpoint."""
 
-    name: str = ""
+    name: str = Field(min_length=1)
+    count: int = Field(default=DEFAULT_RESULT_LIMIT, ge=1, le=MAX_RESULT_LIMIT)
+    language: str = "en"
+    format: str = "json"
 
-
-class OpenMeteoResponse(BaseModel):
-    """Validated response for the Open-Meteo Geocoding search endpoint"""
-
-    results: list[dict[str, Any]]
+    def to_params(self) -> dict[str, Any]:
+        """Build the flat query-parameter dict for the HTTP client."""
+        return self.model_dump()
 
 
 class OpenMeteoClient(GeocodingClient):
-    """Resolve city names to coordinates using the Open-Meteo Geocoding API."""
+    """Resolve city names to ranked places using the Open-Meteo Geocoding API."""
 
-    def __init__(self):
-        self.url = httpx.URL("https://geocoding-api.open-meteo.com/v1/search")
-        self.coordinates: Coordinates | None = None
+    def __init__(self, http_client: HttpApiClient | None = None) -> None:
+        """Build the client.
 
-    async def set_coordinates(self, city: str) -> None:
-        """Resolve and cache coordinates for *city* on this client instance."""
+        :param http_client: Shared HTTP client; one is created per instance
+            when omitted.
+        """
+        self.url = SEARCH_URL
+        self.http_client = http_client if http_client is not None else HttpApiClient()
 
+    async def search(
+        self, city: str, *, limit: int = DEFAULT_RESULT_LIMIT
+    ) -> list[Place]:
+        """Return places matching *city*, best match first.
+
+        :param city: Place name to look up.
+        :param limit: Maximum matches to return.
+        :raises ParameterSettingError: If *city* or *limit* is unusable.
+        :raises OpenMeteoCityNotFoundError: If nothing matched.
+        :raises OpenMeteoResponseError: If the response shape is unusable.
+        """
         try:
-            params = OpenMeteoParams(name=city)
+            params = OpenMeteoParams(name=city.strip(), count=limit)
         except ValidationError as err:
-            raise ParameterSettingError(err)
+            raise ParameterSettingError(err) from err
 
-        api_response = await HttpApiClient().make_request(
-            url=self.url, request_method="GET", parameters=params.model_dump()
+        response = await self.http_client.make_request(
+            url=self.url,
+            request_method="GET",
+            parameters=params.to_params(),
+            cache_ttl=TTL["geocoding"],
         )
 
-        raw_results = api_response.get("results", None)
-
+        raw_results = response.get("results")
         if not raw_results:
-            raise OpenMeteoCityNotFoundError(params.name, api_response)
-
-        # Tries to validate that raw_results is of type list[Dict[str,Any]]
-        try:
-            response = OpenMeteoResponse(results=raw_results)
-        except ValidationError as err:
+            raise OpenMeteoCityNotFoundError(params.name, response)
+        if not isinstance(raw_results, list):
             raise OpenMeteoResponseError(
                 message="Received malformed data from Open-Meteo API",
-                details=err.errors(),
+                details=raw_results,
             )
 
-        coordinate_data = response.results[0]
-
-        try:
-            self.coordinates = Coordinates.model_validate(
-                {
-                    "latitude": coordinate_data.get("latitude"),
-                    "longitude": coordinate_data.get("longitude"),
-                }
+        # Skip individual results that are missing coordinates rather than
+        # discarding a whole page of otherwise good matches.
+        places = [
+            place
+            for place in (_parse_place(result) for result in raw_results)
+            if place is not None
+        ]
+        if not places:
+            raise OpenMeteoResponseError(
+                message=f"No usable coordinates in Open-Meteo results for {city!r}",
+                details=raw_results,
             )
-        except ValidationError as err:
-            raise CoordinatesSettingError(err)
+        return places
 
-    # Open-Meteo ranks results by relevance; index 0 is the closest match to the query.
-    def get_coordinates(self) -> Coordinates:
-        if self.coordinates is not None:
-            return self.coordinates
-        else:
-            raise OpenMeteoCoordinatesNotFoundError(coordinates=self.coordinates)
+
+def _parse_place(result: Any) -> Place | None:
+    """Convert one raw Open-Meteo result into a :class:`Place`, or ``None``."""
+    if not isinstance(result, dict):
+        return None
+    try:
+        coordinates = Coordinates(
+            latitude=result["latitude"], longitude=result["longitude"]
+        )
+        return Place(
+            name=result.get("name") or "",
+            coordinates=coordinates,
+            country=result.get("country"),
+            country_code=result.get("country_code"),
+            region=result.get("admin1"),
+            timezone=result.get("timezone"),
+            population=result.get("population"),
+        )
+    except (KeyError, TypeError, ValidationError):
+        return None

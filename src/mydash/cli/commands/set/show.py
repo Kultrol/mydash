@@ -1,23 +1,27 @@
-"""``mydash set show`` — dump the current user configuration as JSON."""
+"""``mydash set show`` — show the current user configuration.
+
+Kept as an alias for ``mydash config show``, which is where configuration
+management lives now.
+"""
 
 from __future__ import annotations
 
-import json
-
-from rich.console import Group
-from rich.json import JSON
-from rich.text import Text
-
-from mydash.cli.commands.set._helpers import config_service, info
+from mydash.cli import ui
+from mydash.cli.commands.config import config_table
+from mydash.cli.commands.set._helpers import config_service
 
 
 def show() -> None:
-    """Print the on-disk user configuration inside a Rich info panel."""
-    cfg = config_service().get_configuration()
-    payload = cfg.model_dump(mode="json")
-    body = Group(
-        Text("Current user configuration:", style="bold bright_white"),
-        Text(""),
-        JSON(json.dumps(payload)),
+    """Print the stored user configuration as a settings table."""
+    with config_service() as service:
+        config = service.get_configuration()
+        path = service.database_path
+
+    ui.console.print(
+        ui.panel(
+            config_table(config),
+            title="⚙️  Config",
+            border="border.info",
+            subtitle=str(path),
+        )
     )
-    info(body, title="⚙️  Config")

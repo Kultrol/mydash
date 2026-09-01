@@ -1,41 +1,32 @@
 """Geocoding client protocol.
 
-Defines the contract for resolving human-readable place names to coordinates.
-Downstream weather clients consume :class:`~mydash.models.geocoding.Coordinates`.
+One call in, ranked matches out. Downstream weather clients consume the
+:class:`~mydash.models.geocoding.Coordinates` on the chosen
+:class:`~mydash.models.geocoding.Place`.
 """
 
 from abc import abstractmethod
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
-import httpx
+from mydash.models.geocoding import Place
 
-from mydash.models.geocoding import Coordinates
+#: Matches requested when the caller does not say otherwise.
+DEFAULT_RESULT_LIMIT = 5
 
 
+@runtime_checkable
 class GeocodingClient(Protocol):
-    """Protocol for geocoding providers.
-
-    Supports two usage styles:
-        - Stateless: call ``get_coordinates(city)`` directly (current Open-Meteo impl).
-        - Stateful: call ``set_coordinates(city)`` then read cached result (not yet
-          implemented on all providers).
-    """
+    """Protocol for geocoding providers."""
 
     @abstractmethod
-    def __init__(self) -> None:
-        self.url: httpx.URL
-        self.coordinates: Coordinates | None
-
-    @abstractmethod
-    async def set_coordinates(self, city: str) -> None:
-        """Resolve and cache coordinates for *city* on the client instance.
+    async def search(
+        self, city: str, *, limit: int = DEFAULT_RESULT_LIMIT
+    ) -> list[Place]:
+        """Resolve *city* to ranked candidate places.
 
         :param city: Human-readable place name (e.g. "Miami").
-        """
-
-    def get_coordinates(self) -> Coordinates:
-        """Return coordinates cached by the most recent ``set_coordinates`` call.
-
-        :return: Validated :class:`Coordinates` for the best-matching result.
+        :param limit: Maximum matches to return, best first.
+        :returns: At least one place; providers raise when nothing matches.
+        :raises CityNotFoundError: If the provider has no match for *city*.
         """
         ...

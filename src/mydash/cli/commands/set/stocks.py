@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 
+from mydash.cli import ui
 from mydash.cli.commands.set._helpers import (
     config_service,
     fmt_choices,
@@ -30,6 +31,7 @@ def stocks_root(ctx: typer.Context) -> None:
         next_steps=[
             "add <symbol> — add a ticker to your watch list",
             "remove <symbol> — remove a ticker from your watch list",
+            "list — show the current watch list",
             f"provider <name> — market data API ({fmt_choices(KNOWN_STOCK_PROVIDERS)})",
         ],
         examples=[
@@ -71,8 +73,8 @@ def add(
     def message() -> str:
         symbols = ", ".join(svc.get_stock_symbols())
         return (
-            f"Added [bold bright_white]{symbol.strip().upper()}[/bold bright_white]\n"
-            f"Symbols: [bright_cyan]{symbols}[/bright_cyan]"
+            f"Added [heading]{symbol.strip().upper()}[/heading]\n"
+            f"Symbols: [accent]{symbols}[/accent]"
         )
 
     run(action, success_message=message, success_title="📈  Stocks · add")
@@ -106,8 +108,8 @@ def remove(
     def message() -> str:
         symbols = ", ".join(svc.get_stock_symbols()) or "(none)"
         return (
-            f"Removed [bold bright_white]{symbol.strip().upper()}[/bold bright_white]\n"
-            f"Symbols: [bright_cyan]{symbols}[/bright_cyan]"
+            f"Removed [heading]{symbol.strip().upper()}[/heading]\n"
+            f"Symbols: [accent]{symbols}[/accent]"
         )
 
     run(action, success_message=message, success_title="📈  Stocks · remove")
@@ -145,8 +147,32 @@ def provider(
     def message() -> str:
         return (
             f"Stocks provider set to "
-            f"[bold bright_white]{svc.get_stock_provider()}[/bold bright_white]\n"
-            f"Available: [bright_cyan]{fmt_choices(KNOWN_STOCK_PROVIDERS)}[/bright_cyan]"
+            f"[heading]{svc.get_stock_provider()}[/heading]\n"
+            f"Available: [accent]{fmt_choices(KNOWN_STOCK_PROVIDERS)}[/accent]"
         )
 
     run(action, success_message=message, success_title="📈  Stocks · provider")
+
+
+@app.command("list")
+def list_symbols() -> None:
+    """Show the tickers currently on your watch list."""
+    symbols = config_service().get_stock_symbols()
+    if not symbols:
+        hint_panel(
+            title="📈  set stocks list",
+            intro="Your watch list is empty.",
+            next_steps=["Add a ticker: mydash set stocks add <SYMBOL>"],
+            examples=["mydash set stocks add AAPL"],
+            tip="mydash stocks -s AAPL,MSFT shows tickers without saving them.",
+        )
+        return
+
+    table = ui.detail_table()
+    table.add_column("#", style="muted", width=3, justify="right")
+    table.add_column("Ticker", style="value")
+    for index, symbol in enumerate(symbols, start=1):
+        table.add_row(str(index), symbol)
+    ui.console.print(
+        ui.panel(table, title="📈  Watch list", border="border.stocks")
+    )
