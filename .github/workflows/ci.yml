@@ -100,3 +100,50 @@ jobs:
         with:
           name: distributions
           path: dist/
+
+  docker:
+    # The image is not published anywhere, so this job is what keeps the
+    # Dockerfile honest: it has to build, and the CLI has to run inside it.
+    name: docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: mydash:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run the CLI inside the image
+        run: |
+          docker run --rm mydash:ci --version
+          docker run --rm mydash:ci doctor --offline
+
+      # Proves the /data mount is wired up: a preference written by one
+      # container has to be visible to the next. Units are stored locally,
+      # so unlike `set weather city` this touches no network.
+      - name: State survives the container
+        run: |
+          docker run --rm -v mydash-ci-data:/data mydash:ci set weather units imperial
+          docker run --rm -v mydash-ci-data:/data mydash:ci config show | grep -qi imperial
+
+  gate:
+    # The one check branch protection requires. Depending on the matrix legs
+    # by name would break the protection rule every time the matrix changes.
+    name: all checks passed
+    # always() is load-bearing: without it this job is *skipped* when a
+    # dependency fails, and a skipped required check does not block a merge.
+    if: always()
+    needs: [test, lint, lowest-direct, build, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to have succeeded
+        run: |
+          echo '${{ toJSON(needs) }}' | jq -e 'all(.[]; .result == "success")' > /dev/null \
+            || { echo "::error::A required CI job did not succeed."; exit 1; }

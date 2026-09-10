@@ -60,7 +60,7 @@ mydash  ·  Monday 31 August  ·  Miami  ·  4:42 PM ─────────
 
 ## 📋 Requirements
 
-- 🐍 **Python 3.12+** (tested on 3.12, 3.13, and 3.14)
+- 🐍 **Python 3.12+** (tested on 3.12, 3.13, and 3.14) — or 🐳 **Docker**, which needs no Python at all
 - 🖥️ **Linux or macOS.** Windows is untested — it may well work, but the
   credentials file's `0600` permissions do not restrict access there, so it is
   not a supported platform
@@ -112,6 +112,45 @@ uv run mydash brief
 ```
 
 Prefer plain pip? `python -m venv .venv && source .venv/bin/activate && pip install -e .`
+
+### With Docker, no Python needed
+
+If you would rather not install a Python toolchain at all, build the image and
+run the CLI out of it:
+
+```bash
+docker build -t mydash .
+```
+
+```bash
+docker run --rm -it -v mydash-data:/data mydash brief
+```
+
+The `-v mydash-data:/data` is what makes your preferences and watch list
+survive: the image points `MYDASH_DB_PATH` at `/data`, and the credentials file
+lives beside the database, so that one mount covers every piece of state. Drop
+it and each run starts from defaults.
+
+The `-it` matters too — it gives Rich a real terminal to measure, so the panels
+match your window instead of falling back to 80 columns.
+
+For the markets panel, pass the Alpaca keys straight in. Real environment
+variables are the highest-precedence source, so they win over any file:
+
+```bash
+docker run --rm -it -v mydash-data:/data -e STOCK_ALPACA_API_KEY_ID -e STOCK_ALPACA_API_SECRET_KEY mydash brief
+```
+
+Any subcommand works the same way — `mydash` is the image's entrypoint:
+
+```bash
+docker run --rm -it -v mydash-data:/data mydash set weather city Chicago
+```
+
+Worth knowing: the image is built from `uv.lock`, so it runs the exact
+dependency versions CI resolves. It is not published to a registry — you build
+it yourself, and CI builds and smoke-tests it on every pull request so it
+cannot rot.
 
 ### Shell completion
 

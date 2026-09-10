@@ -20,3 +20,13 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+
+  # The Dockerfile pins both base images to an exact version so builds are
+  # reproducible; these PRs are what move those pins forward.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      docker-images:
+        patterns: ["*"]
