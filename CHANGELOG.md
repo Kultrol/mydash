@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Docker support.** A multi-stage `Dockerfile` builds mydash from `uv.lock`,
+  so the image runs the same dependency versions CI resolves. Point one mount at
+  `/data` and it holds both the database and the credentials file. The image is
+  not published to a registry — build it yourself with `docker build -t mydash .`
+- **A Docker job in CI**, which builds the image, runs the CLI inside it, and
+  checks that state written by one container is visible to the next
+- **`CONTRIBUTING.md`** and a pull request template, describing the
+  branch → pull request → squash-merge flow
+- **Dependabot for Docker base images**, which the `Dockerfile` pins exactly
+
+### Changed
+
+- **`main` is now protected.** Changes reach it through a pull request whose
+  checks passed, rather than a direct push. CI grew a single `all checks passed`
+  job that depends on all the others and is the only required check, so adding
+  or removing a matrix leg no longer breaks the protection rule
+
 ## [1.0.0] — 2026-08-31
 
 First stable release. mydash is a terminal application, it works from any

@@ -1,0 +1,43 @@
+# The build needs pyproject.toml, uv.lock, README.md, and src/. Everything
+# else is context the daemon would copy for nothing.
+
+.git
+.gitignore
+.github
+.claude
+
+# Virtual environments and build output — the image builds its own.
+.venv
+dist/
+build/
+wheels/
+*.egg-info
+
+__pycache__/
+*.py[oc]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Tests run in CI against the source tree, not inside the image.
+test/
+
+# docs/assets alone is ~1.5 MB of screenshot and demo GIF.
+docs/
+
+# Never bake credentials into an image layer.
+.env
+.env.*
+!.env.example
+
+# Editor and local tooling
+.idea
+.zed
+.python-version
+
+# Not inputs to the build.
+Dockerfile
+.dockerignore
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
