@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
 # ---------------------------------------------------------------- runtime ---
-FROM python:3.13-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 
 # Pointing the database at /data puts the credentials file there too:
 # env.user_env_path() returns the directory holding the database. One mount
