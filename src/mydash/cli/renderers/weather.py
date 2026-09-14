@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.markup import escape
 from rich.panel import Panel
 
 from mydash.cli import ui
@@ -29,7 +30,9 @@ def weather_panel(
     :param failure: Why the forecast is missing, if it is.
     :param compact: Drop the "feels like" and wind columns.
     """
-    title = f"🌤️  Weather · {city}"
+    # Panel titles are parsed as markup, and the city name came from the
+    # geocoding provider.
+    title = f"🌤️  Weather · {escape(city)}"
 
     if failure is not None:
         return ui.panel(

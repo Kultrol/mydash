@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel
 
+from mydash.models.text import CleanStr
+
 
 class HourForecast(BaseModel):
     """Single-hour weather snapshot within a day."""
@@ -58,7 +60,7 @@ class MultiDayForecast(BaseModel):
     """Top-level container returned by a weather client."""
 
     days: list[DayForecast]
-    timezone: str | None = None
+    timezone: CleanStr | None = None
 
     def upcoming_hours(
         self, count: int, *, now: datetime.datetime | None = None

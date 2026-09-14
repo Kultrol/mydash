@@ -22,6 +22,7 @@ from mydash.client.stocks.providers.alpaca.alpaca import AlpacaClient
 from mydash.client.stocks.providers.alpaca.errors import MissingCredentialsError
 from mydash.client.weather.factory import get_weather_client
 from mydash.env import load_environment, user_env_path
+from mydash.models.text import clean_text
 from mydash.services.user_config import UserConfig, UserConfigurationService
 
 OK = "✅"
@@ -186,7 +187,9 @@ def _render(checks: list[Check], *, offline: bool) -> None:
     table.add_column("Check", style="heading", no_wrap=True)
     table.add_column("Detail", style="value", overflow="fold")
     for check in checks:
-        table.add_row(check.status, check.name, check.detail)
+        # Details quote provider responses and error bodies: strip control
+        # characters, and hand Rich Text so brackets are not read as markup.
+        table.add_row(check.status, check.name, Text(clean_text(check.detail)))
 
     failures = [check for check in checks if check.failed]
     border = "border.error" if failures else "border.success"

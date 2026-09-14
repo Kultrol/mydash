@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from rich.markup import escape
 from rich.panel import Panel
+from rich.text import Text
 
 from mydash.cli import ui
 from mydash.cli.renderers import _common
@@ -27,7 +29,7 @@ def headlines_panel(
     :param failure: Why headlines are missing, if they are.
     :param compact: Drop the source column.
     """
-    title = f"📰 Headlines · {category}"
+    title = f"📰 Headlines · {escape(category)}"
 
     if failure is not None:
         return ui.panel(ui.unavailable(failure), title=title, border="border.news")
@@ -46,7 +48,9 @@ def headlines_panel(
     table.add_column("When", style="muted", justify="right", no_wrap=True)
 
     for index, item in enumerate(items, start=1):
-        row = [str(index), item.headline]
+        # Text, not str: a plain string cell is parsed as Rich markup, and the
+        # headline was written by whoever the provider syndicates.
+        row = [str(index), Text(item.headline)]
         if not compact:
             row.append(_common.source_link(item.publication, item.source_url))
         row.append(_common.published(item.published_time))

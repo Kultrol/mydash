@@ -124,7 +124,9 @@ class Database:
         if not self.is_memory:
             parent = Path(self.path).parent
             try:
-                parent.mkdir(parents=True, exist_ok=True)
+                # Owner-only: this directory also holds the credentials file,
+                # and the database knows where you live.
+                parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             except OSError as err:
                 raise DatabaseError(
                     f"could not create the mydash data directory {parent}: {err}"

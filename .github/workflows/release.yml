@@ -15,10 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Nothing here pushes with git, so leave no write token on disk for
+          # the build backend (or anything it pulls in) to find.
+          persist-credentials: false
 
       - uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: true
+          # Build a release from a clean slate, never from a cache another
+          # workflow run could have written.
+          enable-cache: false
 
       - name: Check the tag matches the packaged version
         run: |

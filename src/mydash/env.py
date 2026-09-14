@@ -9,6 +9,12 @@ from the first source that has them, highest precedence first:
 3. A ``.env`` beside (or above) the current directory — the developer path
 4. ``.env`` in the mydash data directory — the one that works from anywhere
 
+Only the variables in :data:`CREDENTIAL_VARS` are taken from those files.
+Source 3 is whatever ``.env`` sits above the directory you ran from — a cloned
+repository, say — and loading all of it would let that file set
+``HTTPS_PROXY`` and ``SSL_CERT_FILE``, which httpx honours, and route your
+Alpaca secret through a proxy that can read it.
+
 Nothing here ever writes a secret: :func:`write_template` only lays down a file
 of placeholders for you to fill in.
 """
@@ -18,7 +24,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from dotenv import find_dotenv, load_dotenv
+from dotenv import dotenv_values, find_dotenv
 
 from mydash.storage.database import default_database_path
 
@@ -30,6 +36,9 @@ ENV_FILE_ENV_VAR = "MYDASH_ENV_FILE"
 #: Credentials mydash knows how to use.
 ALPACA_KEY_VAR = "STOCK_ALPACA_API_KEY_ID"
 ALPACA_SECRET_VAR = "STOCK_ALPACA_API_SECRET_KEY"
+
+#: The only variables an env file is allowed to set.
+CREDENTIAL_VARS = (ALPACA_KEY_VAR, ALPACA_SECRET_VAR)
 
 #: The values :data:`TEMPLATE` ships with. A file still holding these has not
 #: been filled in, and must not read as configured credentials.
@@ -87,13 +96,19 @@ def load_environment() -> list[Path]:
     """Load credentials into the environment and report which files were used.
 
     Values already in the real environment are never overwritten, and neither
-    are values set by a higher-precedence file.
+    are values set by a higher-precedence file. Anything a file sets beyond
+    :data:`CREDENTIAL_VARS` is ignored.
     """
     loaded: list[Path] = []
     for path in candidate_paths():
-        if path.is_file():
-            load_dotenv(path, override=False)
-            loaded.append(path)
+        if not path.is_file():
+            continue
+        values = dotenv_values(path)
+        for name in CREDENTIAL_VARS:
+            value = values.get(name)
+            if value is not None and name not in os.environ:
+                os.environ[name] = value
+        loaded.append(path)
     return loaded
 
 
@@ -140,7 +155,7 @@ def write_template(path: Path | None = None, *, overwrite: bool = False) -> Path
     if destination.exists() and not overwrite:
         raise FileExistsError(f"{destination} already exists")
 
-    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     destination.write_text(TEMPLATE, encoding="utf-8")
     # Credentials file: owner-only on the platforms mydash supports.
     destination.chmod(0o600)

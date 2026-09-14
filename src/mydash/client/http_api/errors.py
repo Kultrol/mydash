@@ -1,6 +1,34 @@
+from mydash.models.text import clean_text
+
+#: Response bodies are quoted in error messages. Cap them so a provider's HTML
+#: error page does not fill the terminal.
+RESPONSE_EXCERPT_LIMIT = 500
+
+
+def _excerpt(response_text):
+    """Return a response body cleaned for display and trimmed to a readable size."""
+    cleaned = clean_text(response_text)
+    if len(cleaned) > RESPONSE_EXCERPT_LIMIT:
+        cleaned = cleaned[:RESPONSE_EXCERPT_LIMIT] + "…"
+    return cleaned
+
+
 class HttpApiError(Exception):
     def __init__(self, general_err):
         super().__init__(general_err)
+
+
+class RedirectError(HttpApiError):
+    """A redirect pointed at a different origin, and was not followed."""
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+        super().__init__(
+            f"Refused to follow a redirect from {str(source)!r} to {str(target)!r}. "
+            "It leaves the host the request was sent to, and the request may "
+            "carry credentials."
+        )
 
 
 class RequestError(HttpApiError):
@@ -137,7 +165,7 @@ class StatusCodeError(HttpApiError):
             )
 
         if response_text is not None:
-            message = f"{message} \n Response body: {response_text}"
+            message = f"{message} \n Response body: {_excerpt(response_text)}"
 
         super().__init__(message)
 
@@ -155,7 +183,7 @@ class ResponseDecodeError(HttpApiError):
             f"Make sure the endpoint returns JSON."
         )
         if response_text is not None:
-            message = f"{message} \n Response body: {response_text}"
+            message = f"{message} \n Response body: {_excerpt(response_text)}"
         if error is not None:
             message = f"{message} \n Error: {error}"
 

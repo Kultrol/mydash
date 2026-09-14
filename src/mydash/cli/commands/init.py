@@ -121,7 +121,7 @@ def _choose_place(matches: list[Place], *, interactive: bool) -> Place:
     table.add_column("", style="accent", width=3, justify="right")
     table.add_column("Place", style="value")
     for index, place in enumerate(matches, start=1):
-        table.add_row(str(index), place.label)
+        table.add_row(str(index), Text(place.label))
     ui.console.print(ui.panel(table, title="📍 Which one?", border="border.info"))
 
     while True:

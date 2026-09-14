@@ -6,6 +6,8 @@ needs in order to tell two Springfields apart.
 
 from pydantic import BaseModel, Field
 
+from mydash.models.text import CleanStr
+
 
 class Coordinates(BaseModel):
     """Latitude/longitude pair returned by a geocoding lookup."""
@@ -20,14 +22,17 @@ class Place(BaseModel):
     Providers rank matches by relevance, so a search returns several of these
     and the caller decides — silently taking the first hit is how you end up
     with the weather for Springfield, Missouri when you meant Illinois.
+
+    The names come from the provider and end up in panel titles and in your
+    stored config, so they are :data:`~mydash.models.text.CleanStr`.
     """
 
-    name: str
+    name: CleanStr
     coordinates: Coordinates
-    country: str | None = None
-    country_code: str | None = None
-    region: str | None = None
-    timezone: str | None = None
+    country: CleanStr | None = None
+    country_code: CleanStr | None = None
+    region: CleanStr | None = None
+    timezone: CleanStr | None = None
     population: int | None = None
 
     @property

@@ -333,3 +333,48 @@ def test_weather_emoji_falls_back_for_unknown_codes(code, expected):
 
 def test_source_link_falls_back_without_a_url():
     assert _common.source_link("", None).plain == "Source"
+
+
+# --- untrusted provider text ----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url", ["file:///etc/passwd", "ssh://attacker.example", "javascript:alert(1)"]
+)
+def test_source_link_only_links_http_urls(url):
+    assert _common.source_link("Example Times", url).style == "link"
+
+
+def test_source_link_keeps_https_links():
+    style = _common.source_link("Example Times", "https://example.com/a").style
+
+    assert style.link == "https://example.com/a"
+
+
+def test_markup_in_a_headline_is_shown_not_interpreted(render):
+    item = _headlines(1).headlines[0].model_copy(
+        update={"headline": "Breaking [/bold] [link=file:///etc]news[/link]"}
+    )
+
+    output = render(headlines_panel(NewsHeadlines(headlines=[item]), category="tech"))
+
+    assert "[/bold] [link=file:///etc]news[/link]" in output
+
+
+def test_markup_in_a_place_name_is_shown_not_interpreted(render):
+    output = render(weather_panel(_forecast(), city="Springfield [/oops]"))
+
+    assert "Springfield [/oops]" in output
+
+
+def test_a_failure_reason_cannot_reach_the_terminal_raw(render):
+    output = render(
+        headlines_panel(
+            NewsHeadlines(headlines=[]),
+            category="tech",
+            failure="bad gateway\x1b]52;c;cHduZWQ=\x07\x1b[2J",
+        )
+    )
+
+    assert "bad gateway" in output
+    assert "\x1b" not in output

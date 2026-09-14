@@ -13,6 +13,7 @@ import pytest
 from mydash.client.http_api.errors import (
     HttpApiError,
     HttpTimeoutError,
+    RedirectError,
     RequestError,
     ResponseDecodeError,
     StatusCodeError,
@@ -440,3 +441,68 @@ def test_non_get_requests_are_never_cached(cache):
     _run(client, request_method="POST", cache_ttl=60)
 
     assert attempts["count"] == 2
+
+
+# =============================================
+# ******* Redirects ***************************
+# =============================================
+
+
+def test_cross_origin_redirect_is_refused_and_secrets_stay_put():
+    """httpx strips Authorization on a cross-origin redirect, but not APCA-*."""
+    seen: list[tuple[str, str | None]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host, request.headers.get("APCA-API-SECRET-KEY")))
+        if request.url.host == "api.example.com":
+            return httpx.Response(
+                302, headers={"Location": "https://attacker.example/collect"}
+            )
+        return httpx.Response(200, json={"stolen": True})
+
+    with pytest.raises(RedirectError) as err:
+        _run(
+            _client(handler),
+            headers=httpx.Headers({"APCA-API-SECRET-KEY": "top-secret"}),
+        )
+
+    assert seen == [("api.example.com", "top-secret")]
+    assert "attacker.example" in str(err.value)
+    assert isinstance(err.value, HttpApiError)
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "http://api.example.com/v1/resource",  # downgrade to cleartext
+        "https://api.example.com:8443/v1/resource",  # different port
+        "https://sub.api.example.com/v1/resource",  # different host
+    ],
+)
+def test_redirects_that_change_scheme_host_or_port_are_refused(location):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == MOCK_URL:
+            return httpx.Response(301, headers={"Location": location})
+        return httpx.Response(200, json={"followed": True})
+
+    with pytest.raises(RedirectError):
+        _run(_client(handler))
+
+
+def test_same_origin_redirect_is_followed():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/resource":
+            return httpx.Response(308, headers={"Location": "/v2/resource"})
+        return httpx.Response(200, json={"path": request.url.path})
+
+    assert _run(_client(handler)) == {"path": "/v2/resource"}
+
+
+def test_status_code_error_body_is_cleaned_and_trimmed():
+    body = "\x1b]52;c;cHduZWQ=\x07" + "x" * 5000
+
+    err = StatusCodeError(MOCK_URL, 500, method="GET", response_text=body)
+
+    assert "\x1b" not in str(err)
+    assert len(str(err)) < 1000
+    assert err.response_text == body

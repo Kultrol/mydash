@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 
 import typer
+from rich.markup import escape
 
 from mydash.cli import ui
 from mydash.cli.commands.set._helpers import (
@@ -83,7 +84,7 @@ def city(
         place = matched["place"]
         coords = place.coordinates
         return (
-            f"City set to [heading]{place.label}[/heading]\n"
+            f"City set to [heading]{escape(place.label)}[/heading]\n"
             f"Coordinates: [accent]{coords.latitude}[/accent], "
             f"[accent]{coords.longitude}[/accent]"
         )
