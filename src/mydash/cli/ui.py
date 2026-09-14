@@ -20,6 +20,8 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
+from mydash.models.text import clean_text
+
 THEME = Theme(
     {
         # Structure
@@ -122,7 +124,7 @@ def render_exception(exc: BaseException, *, hint: str | None = None) -> None:
     :param hint: Optional next step for the reader.
     """
     body = Text()
-    body.append(str(exc) or exc.__class__.__name__, style="value")
+    body.append(clean_text(str(exc)) or exc.__class__.__name__, style="value")
     if hint:
         body.append("\n\n")
         body.append(hint, style="muted")
@@ -173,7 +175,8 @@ def unavailable(reason: str) -> Text:
     """Body for a panel whose provider failed, explaining why."""
     body = Text()
     body.append("Unavailable — ", style="danger")
-    body.append(reason, style="value")
+    # Reasons often quote the provider's own response body.
+    body.append(clean_text(reason), style="value")
     return body
 
 

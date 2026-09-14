@@ -29,6 +29,7 @@ from mydash import __version__
 from mydash.client.http_api.errors import (
     HttpApiError,
     HttpTimeoutError,
+    RedirectError,
     RequestError,
     ResponseDecodeError,
     StatusCodeError,
@@ -103,6 +104,30 @@ class HttpApiClient:
             await self._shared.aclose()
             self._shared = None
 
+    @staticmethod
+    async def _refuse_cross_origin_redirect(response: httpx.Response) -> None:
+        """Stop a redirect that would leave the origin the request was sent to.
+
+        httpx strips ``Authorization`` when a redirect changes origin, but not
+        custom auth headers: Alpaca's key and secret would go wherever the
+        ``Location`` pointed. Refusing also rules out an https → http downgrade.
+
+        :raises RedirectError: The redirect changes scheme, host, or port.
+        """
+        if not response.has_redirect_location:
+            return
+        source = response.request.url
+        try:
+            target = source.join(response.headers["Location"])
+        except httpx.InvalidURL:
+            return  # httpx rejects the malformed Location itself
+        if (target.scheme, target.host, target.port) != (
+            source.scheme,
+            source.host,
+            source.port,
+        ):
+            raise RedirectError(source=source, target=target)
+
     def _build_client(self) -> httpx.AsyncClient:
         """Build an httpx client with mydash's timeout, limits, and User-Agent."""
         return httpx.AsyncClient(
@@ -110,6 +135,7 @@ class HttpApiClient:
             limits=_CONNECTION_LIMITS,
             headers={"User-Agent": USER_AGENT},
             follow_redirects=True,
+            event_hooks={"response": [self._refuse_cross_origin_redirect]},
             transport=self.transport,
         )
 

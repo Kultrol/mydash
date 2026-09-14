@@ -117,7 +117,9 @@ environment variables, the file named by `MYDASH_ENV_FILE`, a `.env` beside or
 above the working directory, then `.env` in the data directory — the last being
 what makes a global install work from any directory. `mydash.env` owns this;
 `mydash config env` shows what it found. Placeholder values from a freshly
-created template are treated as *not* configured.
+created template are treated as *not* configured. Only the Alpaca variables are
+taken from a file; anything else it sets — `HTTPS_PROXY`, say — is ignored, since
+a `.env` above the working directory may belong to someone else.
 
 ---
 

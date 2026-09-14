@@ -11,10 +11,12 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 import typer
+from rich.markup import escape
 from rich.text import Text
 
 from mydash.cli import ui
 from mydash.cli.context import config_service as _config_service
+from mydash.models.text import clean_text
 from mydash.services.user_config import UserConfigurationService
 
 # Re-exported so subcommands keep importing panels from one place.
@@ -120,7 +122,8 @@ def run(
     try:
         action()
     except Exception as exc:
-        ui.error(str(exc) or exc.__class__.__name__)
+        # The message may quote a provider response; show it, never parse it.
+        ui.error(escape(clean_text(str(exc))) or exc.__class__.__name__)
         raise typer.Exit(1) from exc
     ui.success(success_message(), title=success_title)
 

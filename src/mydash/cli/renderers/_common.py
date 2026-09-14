@@ -129,9 +129,14 @@ def optional_money(value: float | None) -> Text:
 
 
 def source_link(publication: str, url: str | None) -> Text:
-    """Underline a publication name and attach a terminal hyperlink."""
+    """Underline a publication name and attach a terminal hyperlink.
+
+    Only http(s) URLs become links. The URL comes from the news provider, and a
+    ``file:`` or ``ssh:`` target behind an innocent publication name is not
+    something a click should open.
+    """
     label = publication or "Source"
-    if url:
+    if url and url.lower().startswith(("https://", "http://")):
         return Text(label, style=Style(bold=True, underline=True, link=url))
     return Text(label, style="link")
 

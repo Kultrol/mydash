@@ -41,7 +41,9 @@ def config_table(config: UserConfig) -> object:
         ("Stocks provider", config.provider_stocks),
     ]
     for label, value in rows:
-        table.add_row(label, str(value))
+        # Text, not str: the city name came from the geocoding provider, and a
+        # plain string cell would be parsed as Rich markup.
+        table.add_row(label, Text(str(value)))
     return table
 
 

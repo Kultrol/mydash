@@ -26,6 +26,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   job that depends on all the others and is the only required check, so adding
   or removing a matrix leg no longer breaks the protection rule
 
+### Security
+
+- **Alpaca credentials no longer follow a redirect to another host.** httpx
+  strips `Authorization` on a cross-origin redirect, but not Alpaca's
+  `APCA-API-KEY-ID` and `APCA-API-SECRET-KEY` headers, so a redirect from
+  `data.alpaca.markets` would have forwarded both. Redirects that change scheme,
+  host, or port are now refused for every provider
+- **Env files can only set the Alpaca credentials.** A `.env` found above the
+  working directory — in a cloned repository, say — could set any variable,
+  including `HTTPS_PROXY` and `SSL_CERT_FILE`, which together route every
+  request, secret headers included, through a proxy that can read them
+- **Provider text is stripped of terminal control characters.** A headline,
+  place name, or error body carrying escape sequences could clear the screen,
+  retitle the window, or write to the clipboard (OSC 52). Headlines and place
+  names are no longer parsed as Rich markup either, so a stray `[/tag]` cannot
+  crash a panel, and only `http(s)` article URLs become terminal links
+- The data directory is created owner-only (`0700`), and the release workflow
+  builds without a cache or a persisted git token
+
 ## [1.0.0] — 2026-08-31
 
 First stable release. mydash is a terminal application, it works from any

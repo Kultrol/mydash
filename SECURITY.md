@@ -17,7 +17,14 @@ Worth knowing before you go looking:
 - **Credentials never leave your machine except to the provider they
   authenticate.** The Alpaca key and secret are read from the environment or a
   local file (`mydash config env` shows exactly which), and are sent only to
-  `data.alpaca.markets` as request headers.
+  `data.alpaca.markets` as request headers. A redirect to any other host is
+  refused rather than followed.
+- **Env files can set only the Alpaca credentials.** A `.env` above the
+  directory you run from is read for those two variables and nothing else, so a
+  file you did not write cannot point mydash at its own proxy or CA bundle.
+- **Provider text is treated as untrusted.** Control characters are stripped
+  before anything reaches your terminal, headlines and place names are never
+  parsed as markup, and only `http(s)` article URLs become clickable links.
 - **Nothing is sent to the maintainer.** There is no telemetry, no crash
   reporting, and no update check.
 - **Credentials are never written to the database.** `mydash.db` holds your
